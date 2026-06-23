@@ -17,7 +17,13 @@ const INITIAL_SHIPMENTS = [
     eta: '45 Menit',
     weight: 1000,
     volume: 0.7,
-    date: '23 Juni 2026'
+    date: '23 Juni 2026',
+    history: [
+      { status: 'Pesanan Dibuat', time: '10:00 AM', desc: 'Sistem mengunci pembayaran escrow.' },
+      { status: 'Dikonfirmasi', time: '10:15 AM', desc: 'Merchant menyiapkan material semen.' },
+      { status: 'Picked Up', time: '11:00 AM', desc: 'Semen dimuat ke armada CDE.' },
+      { status: 'Dalam Perjalanan', time: '11:30 AM', desc: 'Truk melintasi tol Jakarta-Tangerang.' }
+    ]
   },
   {
     id: 'BBG-776655',
@@ -32,7 +38,11 @@ const INITIAL_SHIPMENTS = [
     eta: '2 Jam 15 Menit',
     weight: 2100,
     volume: 1.5,
-    date: '23 Juni 2026'
+    date: '23 Juni 2026',
+    history: [
+      { status: 'Pesanan Dibuat', time: '09:00 AM', desc: 'Pesanan masuk ke sistem antrean.' },
+      { status: 'Disiapkan oleh Toko', time: '09:30 AM', desc: 'Alat berat mulai memuat pasir.' }
+    ]
   },
   {
     id: 'BBG-112233',
@@ -47,7 +57,13 @@ const INITIAL_SHIPMENTS = [
     eta: 'Tiba di Lokasi',
     weight: 600,
     volume: 0.25,
-    date: '22 Juni 2026'
+    date: '22 Juni 2026',
+    history: [
+      { status: 'Pesanan Dibuat', time: 'Yesterday', desc: 'Transaksi tervalidasi.' },
+      { status: 'Disiapkan oleh Toko', time: 'Yesterday', desc: 'Besi beton diikat aman.' },
+      { status: 'Dalam Perjalanan', time: 'Yesterday', desc: 'Perjalanan lancar via arteri.' },
+      { status: 'Selesai', time: 'Yesterday', desc: 'Diterima & TTD digital diverifikasi.' }
+    ]
   }
 ];
 
@@ -59,13 +75,48 @@ const DEPOT_OUTLETS = [
   { region: 'Bandung', name: 'Hub Priangan - Soekarno Hatta', address: 'Jl. Soekarno-Hatta No. 624, Bandung', tel: '+62 22-7788-5544' }
 ];
 
+const PRODUCT_CATEGORIES = [
+  { id: 'semen', name: 'Semen', icon: '🧱', count: '12 Varian' },
+  { id: 'pasir', name: 'Pasir & Kerikil', icon: '⏳', count: '5 Jenis' },
+  { id: 'besi', name: 'Besi & Baja', icon: '⛓️', count: '18 Ukuran' },
+  { id: 'cat', name: 'Cat & Pelapis', icon: '🎨', count: '24 Warna' },
+  { id: 'alat', name: 'Alat Berat', icon: '🚜', count: '4 Armada' }
+];
+
+const SLIDER_PHOTOS = [
+  {
+    id: 1,
+    title: 'PAKET BESAR & MATERIAL PROYEK, CARI BAHANBANGUNGO!',
+    desc: 'Pengiriman semen curah, pasir tambang, dan besi beton struktural dijamin aman dengan perlindungan anti-ODOL serta sistem lacak GPS real-time.',
+    badge: '⚡ CARGO PREMIUM',
+    bgGradient: 'from-emerald-900 via-emerald-800 to-teal-800'
+  },
+  {
+    id: 2,
+    title: '👑 REGISTRASI VIP CLIENT UNTUK KONTRAKTOR PROYEK',
+    desc: 'Nikmati kemudahan pembayaran termin (Tempo 30 Hari), diskon tarif pengiriman flat-rate 10%, serta fasilitas bebas biaya kuli bongkar di lokasi.',
+    badge: '💎 MEMBER B2B',
+    bgGradient: 'from-slate-900 via-blue-950 to-indigo-900'
+  },
+  {
+    id: 3,
+    title: '🛠️ KEAMANAN MUATAN PRIORITAS JALAN RAYA',
+    desc: 'Sistem logistik kami dilengkapi kecerdasan konversi berat-volume otomatis untuk merekomendasikan armada yang tepat sesuai regulasi jalan raya nasional.',
+    badge: '🛡️ GARANSI ANTI-ODOL',
+    bgGradient: 'from-amber-950 via-stone-900 to-emerald-950'
+  }
+];
+
 export default function App() {
-  const [activeTab, setActiveTab] = useState('tracking'); // tracking | price | outlet | order
+  const [activeTab, setActiveTab] = useState('dashboard'); // dashboard | tracking | price | outlet | order
   const [shipments, setShipments] = useState(INITIAL_SHIPMENTS);
   const [selectedShipmentId, setSelectedShipmentId] = useState('BBG-998122');
   const [searchTrackingId, setSearchTrackingId] = useState('BBG-998122');
   const [activeRole, setActiveRole] = useState('customer'); // customer | admin | driver | merchant
   
+  // Carousel Slider State
+  const [currentSlide, setCurrentSlide] = useState(0);
+
   // State untuk Kalkulator Tarif (Cek Harga)
   const [calcWeight, setCalcWeight] = useState(1500); // dalam Kg
   const [calcVolume, setCalcVolume] = useState(1.2); // dalam m³
@@ -91,9 +142,15 @@ export default function App() {
   const [signatureSaved, setSignatureSaved] = useState(false);
   const [podPhoto, setPodPhoto] = useState(null);
 
-  // ==========================================
-  // KALKULATOR TARIF LOGISTIK & PROTEKSI ODOL
-  // ==========================================
+  // Auto-Slide untuk Banner Promosi
+  useEffect(() => {
+    const timer = setInterval(() => {
+      setCurrentSlide((prev) => (prev + 1) % SLIDER_PHOTOS.length);
+    }, 6000);
+    return () => clearInterval(timer);
+  }, []);
+
+  // Kalkulator Tarif & Proteksi ODOL
   useEffect(() => {
     let baseFare = 150000;
     let ratePerKm = 8000;
@@ -134,9 +191,6 @@ export default function App() {
     s => s.id.toLowerCase().trim() === searchTrackingId.toLowerCase().trim()
   );
 
-  // ==========================================
-  // SIMULATOR MAJU PROSES (ADMIN & DRIVER)
-  // ==========================================
   const handleSimulateProgress = () => {
     setShipments(prev => prev.map(s => {
       if (s.id === selectedShipmentId) {
@@ -159,8 +213,14 @@ export default function App() {
           nextDetail = 'Kurir sedang berada di rest area tol KM 57.';
         }
 
+        const newHistory = [...s.history, {
+          status: nextStatus,
+          time: new Date().toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit' }),
+          desc: nextDetail
+        }];
+
         triggerToast(`Status logistik ${s.id} berhasil diperbarui!`);
-        return { ...s, progress: nextProgress, status: nextStatus, statusDetail: nextDetail, eta: nextProgress === 100 ? 'Tiba' : s.eta };
+        return { ...s, progress: nextProgress, status: nextStatus, statusDetail: nextDetail, eta: nextProgress === 100 ? 'Tiba' : s.eta, history: newHistory };
       }
       return s;
     }));
@@ -175,8 +235,10 @@ export default function App() {
     ctx.lineCap = 'round';
     ctx.strokeStyle = '#000000';
     const rect = canvas.getBoundingClientRect();
-    const x = (e.clientX || e.touches[0].clientX) - rect.left;
-    const y = (e.clientY || e.touches[0].clientY) - rect.top;
+    const clientX = e.clientX || (e.touches && e.touches[0].clientX);
+    const clientY = e.clientY || (e.touches && e.touches[0].clientY);
+    const x = clientX - rect.left;
+    const y = clientY - rect.top;
     ctx.beginPath();
     ctx.moveTo(x, y);
     setIsDrawing(true);
@@ -187,8 +249,10 @@ export default function App() {
     const canvas = canvasRef.current;
     const ctx = canvas.getContext('2d');
     const rect = canvas.getBoundingClientRect();
-    const x = (e.clientX || e.touches[0].clientX) - rect.left;
-    const y = (e.clientY || e.touches[0].clientY) - rect.top;
+    const clientX = e.clientX || (e.touches && e.touches[0].clientX);
+    const clientY = e.clientY || (e.touches && e.touches[0].clientY);
+    const x = clientX - rect.left;
+    const y = clientY - rect.top;
     ctx.lineTo(x, y);
     ctx.stroke();
   };
@@ -206,7 +270,8 @@ export default function App() {
           status: 'Selesai',
           statusDetail: 'Selesai. Barang diterima dengan baik di lokasi proyek.',
           progress: 100,
-          eta: 'Tiba'
+          eta: 'Tiba',
+          history: [...s.history, { status: 'Selesai', time: 'Just Now', desc: 'Diterima oleh kepala proyek.' }]
         };
       }
       return s;
@@ -217,7 +282,7 @@ export default function App() {
   };
 
   return (
-    <div className="min-h-screen bg-[#F0EFEF] font-sans text-slate-800 flex flex-col justify-between antialiased selection:bg-[#00805A] selection:text-white">
+    <div className="min-h-screen bg-[#F8FAFC] font-sans text-slate-800 flex flex-col justify-between antialiased selection:bg-[#00805A] selection:text-white">
       
       {}
       <style>{`
@@ -225,7 +290,7 @@ export default function App() {
         
         body {
           font-family: 'Plus Jakarta Sans', sans-serif !important;
-          background-color: #F3F4F6;
+          background-color: #F8FAFC;
         }
 
         .bg-logistics-green {
@@ -244,10 +309,6 @@ export default function App() {
           background: rgba(255, 255, 255, 0.9);
           backdrop-filter: blur(12px);
           border: 1px solid rgba(255, 255, 255, 0.6);
-        }
-
-        .floating-sidebar {
-          box-shadow: -4px 12px 24px -6px rgba(0,0,0,0.12);
         }
 
         .no-scrollbar::-webkit-scrollbar {
@@ -274,27 +335,23 @@ export default function App() {
         <div className="max-w-7xl mx-auto px-4 py-3 flex justify-between items-center">
           <div className="flex items-center gap-8">
             {/* Logo Brand */}
-            <div className="flex items-center gap-2">
+            <div className="flex items-center gap-2 cursor-pointer" onClick={() => setActiveTab('dashboard')}>
               <span className="text-3xl">🏗️</span>
               <div>
                 <h1 className="font-extrabold text-xl tracking-tight text-slate-900 leading-none flex items-center gap-1.5">
                   BahanBangun<span className="text-[#00805A]">Go</span>
-                  <span className="text-[10px] bg-slate-100 text-slate-500 px-2 py-0.5 rounded-md font-bold uppercase">Cargo</span>
+                  <span className="text-[10px] bg-slate-100 text-[#00805A] px-2 py-0.5 rounded-md font-bold uppercase">Cargo</span>
                 </h1>
-                <p className="text-[10px] text-slate-400 font-bold tracking-widest mt-0.5">HEAVY LOGISTICS PLATFORM</p>
+                <p className="text-[10px] text-slate-400 font-bold tracking-widest mt-0.5">INTEGRATED LOGISTICS PORTAL</p>
               </div>
             </div>
 
             {/* Desktop Nav Links */}
             <nav className="hidden lg:flex items-center gap-6 text-xs font-bold text-slate-600">
-              <a href="#" className="hover:text-[#00805A] transition">HOME</a>
-              <div className="relative group">
-                <button className="hover:text-[#00805A] flex items-center gap-1 transition uppercase">LAYANAN ▾</button>
-              </div>
-              <div className="relative group">
-                <button className="hover:text-[#00805A] flex items-center gap-1 transition uppercase">INFORMASI ▾</button>
-              </div>
-              <a href="#" className="hover:text-[#00805A] transition">HUBUNGI KAMI</a>
+              <button onClick={() => setActiveTab('dashboard')} className={`hover:text-[#00805A] transition uppercase ${activeTab === 'dashboard' ? 'text-[#00805A]' : ''}`}>Dashboard</button>
+              <button onClick={() => setActiveTab('tracking')} className={`hover:text-[#00805A] transition uppercase ${activeTab === 'tracking' ? 'text-[#00805A]' : ''}`}>Lacak Resi</button>
+              <button onClick={() => setActiveTab('price')} className={`hover:text-[#00805A] transition uppercase ${activeTab === 'price' ? 'text-[#00805A]' : ''}`}>Kalkulator</button>
+              <button onClick={() => setActiveTab('outlet')} className={`hover:text-[#00805A] transition uppercase ${activeTab === 'outlet' ? 'text-[#00805A]' : ''}`}>Cabang Hub</button>
             </nav>
           </div>
 
@@ -307,116 +364,105 @@ export default function App() {
               👑 Registrasi VIP Client
             </button>
             <span className="w-px h-6 bg-slate-200"></span>
-            <span className="text-xs font-bold text-slate-600 hidden sm:inline">👤 porie28</span>
+            <span className="text-xs font-bold text-slate-600 hidden sm:inline">👤 Contractor_Hub</span>
           </div>
         </div>
       </header>
 
+      {}
       {/* =======================================================
-          HERO BANNER & PROMOTIONAL SECTION (MATCH J&T CARGO)
+          DYNAMIC PHOTO SLIDER (DYNAMIC BANNER CAROUSEL)
           ======================================================= */}
-      <section className="bg-logistics-green relative text-white py-14 lg:py-20 overflow-hidden">
-        {/* Abstract Vector Patterns */}
-        <div className="absolute inset-0 opacity-15 mix-blend-overlay pointer-events-none">
-          <svg className="w-full h-full" xmlns="http://www.w3.org/2000/svg">
-            <defs>
-              <pattern id="grid" width="40" height="40" patternUnits="userSpaceOnUse">
-                <path d="M 40 0 L 0 0 0 40" fill="none" stroke="white" strokeWidth="1" />
-              </pattern>
-            </defs>
-            <rect width="100%" height="100%" fill="url(#grid)" />
-          </svg>
-        </div>
+      <section className="relative overflow-hidden text-white transition-all duration-700 ease-in-out">
+        <div className={`bg-gradient-to-r ${SLIDER_PHOTOS[currentSlide].bgGradient} py-12 lg:py-20 px-4 transition-all duration-700`}>
+          
+          <div className="max-w-7xl mx-auto grid grid-cols-1 lg:grid-cols-12 gap-8 items-center relative z-10">
+            <div className="lg:col-span-8 space-y-4 text-center lg:text-left">
+              <span className="inline-flex items-center gap-1.5 bg-[#F2C335] text-slate-950 font-black text-[10px] px-3.5 py-1 rounded-full uppercase tracking-widest">
+                {SLIDER_PHOTOS[currentSlide].badge}
+              </span>
+              <h2 className="text-3xl lg:text-5xl font-black tracking-tight leading-tight uppercase transition-all duration-500">
+                {SLIDER_PHOTOS[currentSlide].title}
+              </h2>
+              <p className="text-sm text-emerald-100 max-w-2xl font-medium leading-relaxed">
+                {SLIDER_PHOTOS[currentSlide].desc}
+              </p>
+              
+              <div className="pt-2 flex flex-wrap justify-center lg:justify-start gap-3">
+                <button 
+                  onClick={() => setShowVipModal(true)}
+                  className="bg-[#F2C335] hover:bg-white hover:text-slate-900 text-slate-950 font-black text-xs px-6 py-3 rounded-xl transition shadow-lg"
+                >
+                  Daftar Kontraktor VIP
+                </button>
+                <button 
+                  onClick={() => {
+                    setActiveTab('price');
+                    triggerToast('Membuka Kalkulator Ongkir.');
+                  }}
+                  className="bg-white/10 hover:bg-white/20 border border-white/20 font-bold text-xs px-5 py-3 rounded-xl transition"
+                >
+                  📊 Kalkulator ODOL
+                </button>
+              </div>
+            </div>
 
-        <div className="max-w-7xl mx-auto px-4 grid grid-cols-1 lg:grid-cols-12 gap-8 items-center relative z-10">
-          <div className="lg:col-span-7 space-y-4 text-center lg:text-left">
-            <span className="inline-flex items-center gap-1.5 bg-[#F2C335] text-slate-950 font-black text-[10px] px-3.5 py-1 rounded-full uppercase tracking-widest">
-              ⚡ PROYEK LANCAR JAYA
-            </span>
-            <h2 className="text-4xl lg:text-5xl font-black tracking-tight leading-none uppercase">
-              PAKET BESAR & MATERIAL,<br />
-              CARI <span className="text-[#F2C335]">BAHANBANGUNGO</span>!
-            </h2>
-            <p className="text-sm text-emerald-100 max-w-lg font-medium leading-relaxed">
-              Kirim semen, pasir, besi beton, dan kargo berat proyek konstruksi Anda dengan sistem pelacakan GPS real-time, perlindungan anti-ODOL, dan bantuan kuli bongkar profesional.
-            </p>
-            <div className="pt-2 flex flex-wrap justify-center lg:justify-start gap-3">
-              <button 
-                onClick={() => setShowVipModal(true)}
-                className="bg-[#F2C335] hover:bg-white hover:text-slate-900 text-slate-950 font-extrabold text-xs px-6 py-3 rounded-xl transition shadow-lg"
-              >
-                REGISTRASI VIP KONTRAKTOR
-              </button>
-              <button 
-                onClick={() => {
-                  setActiveTab('price');
-                  triggerToast('Gunakan widget di bawah untuk cek tarif logistik.');
-                }}
-                className="bg-emerald-950/40 hover:bg-emerald-900/40 border border-emerald-400/30 font-bold text-xs px-5 py-3 rounded-xl transition"
-              >
-                📊 Panduan Dimensi Armada
-              </button>
+            {/* Graphic Side: Interactive Visual Representation */}
+            <div className="lg:col-span-4 hidden lg:flex justify-end relative">
+              <div className="bg-white/10 backdrop-blur-md rounded-3xl p-6 border border-white/10 shadow-2xl w-full max-w-sm">
+                <p className="text-xs font-bold text-emerald-300 uppercase tracking-wider mb-2">Simulasi Status Ekspedisi</p>
+                <div className="space-y-4">
+                  <div className="flex items-center gap-3">
+                    <span className="text-2xl">🚛</span>
+                    <div>
+                      <h4 className="text-xs font-bold text-white">CDE Engkel Jakarta</h4>
+                      <p className="text-[10px] text-slate-300">Muatan Semen Padang (1 Ton)</p>
+                    </div>
+                  </div>
+                  <div className="h-1.5 bg-white/20 rounded-full overflow-hidden">
+                    <div className="h-full bg-[#F2C335] animate-pulse" style={{ width: '65%' }}></div>
+                  </div>
+                  <div className="flex justify-between text-[10px] text-emerald-100">
+                    <span>Estimasi Selesai</span>
+                    <span className="font-bold">45 Menit</span>
+                  </div>
+                </div>
+              </div>
             </div>
           </div>
 
-          {/* Graphic Side: 3D-like Logistics SVGs */}
-          <div className="lg:col-span-5 hidden lg:flex justify-end relative">
-            <svg className="w-96 h-80 drop-shadow-2xl" viewBox="0 0 400 320" fill="none" xmlns="http://www.w3.org/2000/svg">
-              {/* Ground Shadow */}
-              <ellipse cx="200" cy="280" rx="160" ry="25" fill="#004D36" opacity="0.6" />
-              
-              {/* Semi-3D Premium Cement Mixer Truck */}
-              <g transform="translate(40, 40)">
-                {/* Truck Cabin (Slate Grey) */}
-                <path d="M190 120 H250 Q265 120 270 135 L285 170 Q290 185 290 200 V225 H190 Z" fill="#E2E8F0" />
-                <path d="M210 132 H245 L255 160 H210 Z" fill="#1E293B" /> {/* Window */}
-                <rect x="268" y="210" width="24" height="10" rx="3" fill="#64748B" /> {/* Bumper */}
-                <circle cx="280" cy="195" r="6" fill="#F59E0B" /> {/* Headlight */}
-
-                {/* Rotating Mixer Drum (Emerald Green) */}
-                <ellipse cx="110" cy="165" rx="75" ry="50" fill="#00805A" stroke="#34D399" strokeWidth="3" />
-                <ellipse cx="110" cy="165" rx="55" ry="32" fill="#006647" />
-                
-                {/* Steel Support Brackets */}
-                <rect x="175" y="150" width="18" height="75" fill="#475569" />
-                <rect x="45" y="190" width="20" height="35" fill="#475569" />
-
-                {/* Truck Bed / Chassis */}
-                <rect x="30" y="210" width="170" height="20" rx="4" fill="#334155" />
-
-                {/* Tires */}
-                <circle cx="70" cy="240" r="22" fill="#0F172A" />
-                <circle cx="70" cy="240" r="10" fill="#94A3B8" />
-                <circle cx="120" cy="240" r="22" fill="#0F172A" />
-                <circle cx="120" cy="240" r="10" fill="#94A3B8" />
-                <circle cx="215" cy="240" r="22" fill="#0F172A" />
-                <circle cx="215" cy="240" r="10" fill="#94A3B8" />
-              </g>
-
-              {/* Float Cargo Boxes */}
-              <g transform="translate(20, 180)">
-                <polygon points="30,0 60,15 30,30 0,15" fill="#F2C335" />
-                <polygon points="0,15 30,30 30,60 0,45" fill="#D4A71B" />
-                <polygon points="30,30 60,15 60,45 30,60" fill="#E8B723" />
-              </g>
-            </svg>
+          {/* Slider Controls / Dots */}
+          <div className="absolute bottom-4 left-1/2 transform -translate-x-1/2 flex gap-2 z-20">
+            {SLIDER_PHOTOS.map((_, index) => (
+              <button
+                key={index}
+                onClick={() => setCurrentSlide(index)}
+                className={`w-2.5 h-2.5 rounded-full transition-all ${
+                  currentSlide === index ? 'bg-[#F2C335] w-6' : 'bg-white/40'
+                }`}
+                aria-label={`Go to slide ${index + 1}`}
+              />
+            ))}
           </div>
+
         </div>
       </section>
 
+      {}
       {/* =======================================================
           WIDGET HUB UTAMA (CEK STATUS, CEK HARGA, CEK OUTLET)
           ======================================================= */}
-      <section className="max-w-7xl w-full mx-auto px-4 -mt-10 relative z-20">
-        <div className="bg-white rounded-[24px] shadow-xl border border-slate-100 p-5 lg:p-7">
+      <section className="max-w-7xl w-full mx-auto px-4 -mt-8 relative z-20">
+        <div className="bg-white rounded-[24px] shadow-xl border border-slate-100 p-5 lg:p-6">
           
           {/* Tabs Navigator */}
-          <div className="flex flex-wrap gap-2 border-b border-slate-100 pb-4 mb-6">
+          <div className="grid grid-cols-2 md:grid-cols-5 gap-2 border-b border-slate-100 pb-4 mb-6">
             {[
-              { id: 'tracking', label: '🔍 Cek Status Resi', icon: '📦' },
-              { id: 'price', label: '⚖️ Cek Tarif & Anti-ODOL', icon: '💵' },
-              { id: 'outlet', label: '🏪 Cek Outlet Hub', icon: '📍' },
-              { id: 'order', label: '🏗️ Buat Order Material', icon: '📝' }
+              { id: 'dashboard', label: '📊 Dasbor Analitik', icon: '📈' },
+              { id: 'tracking', label: '🔍 Lacak Resi', icon: '📦' },
+              { id: 'price', label: '⚖️ Cek Tarif (Anti-ODOL)', icon: '💵' },
+              { id: 'outlet', label: '🏪 Cari Outlet Hub', icon: '📍' },
+              { id: 'order', label: '🏗️ Buat Order Baru', icon: '📝' }
             ].map(tab => (
               <button
                 key={tab.id}
@@ -424,7 +470,7 @@ export default function App() {
                   setActiveTab(tab.id);
                   triggerToast(`Membuka panel ${tab.label}`);
                 }}
-                className={`flex items-center gap-2 px-5 py-3 rounded-xl text-xs font-extrabold transition-all ${
+                className={`flex items-center gap-2 px-4 py-3 rounded-xl text-xs font-extrabold transition-all ${
                   activeTab === tab.id 
                     ? 'bg-[#00805A] text-white shadow-md shadow-emerald-700/10' 
                     : 'bg-slate-50 text-slate-500 hover:bg-slate-100'
@@ -436,6 +482,62 @@ export default function App() {
             ))}
           </div>
 
+          {}
+          {/* TAB: DASHBOARD ANALITIK */}
+          {activeTab === 'dashboard' && (
+            <div className="space-y-6">
+              
+              {/* Stats Counters */}
+              <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+                <div className="bg-slate-50 border border-slate-100 p-4 rounded-2xl">
+                  <p className="text-[10px] text-slate-400 font-bold uppercase tracking-wider">Total Muatan Aktif</p>
+                  <p className="text-2xl font-extrabold text-slate-900 mt-1">3 Pengiriman</p>
+                  <span className="text-[9px] text-emerald-600 font-bold">🟢 3 Armada di Jalan</span>
+                </div>
+                <div className="bg-slate-50 border border-slate-100 p-4 rounded-2xl">
+                  <p className="text-[10px] text-slate-400 font-bold uppercase tracking-wider">Tonase Logistik</p>
+                  <p className="text-2xl font-extrabold text-slate-900 mt-1">3.700 Kg</p>
+                  <span className="text-[9px] text-emerald-600 font-bold">⚖️ Bebas ODOL</span>
+                </div>
+                <div className="bg-slate-50 border border-slate-100 p-4 rounded-2xl">
+                  <p className="text-[10px] text-slate-400 font-bold uppercase tracking-wider">Cabang Hub Depot</p>
+                  <p className="text-2xl font-extrabold text-slate-900 mt-1">5 Wilayah</p>
+                  <span className="text-[9px] text-slate-500 font-bold">📍 Jawa & Banten</span>
+                </div>
+                <div className="bg-slate-50 border border-slate-100 p-4 rounded-2xl">
+                  <p className="text-[10px] text-slate-400 font-bold uppercase tracking-wider">Dana Escrow Terkunci</p>
+                  <p className="text-2xl font-extrabold text-slate-900 mt-1">Rp 12.5M</p>
+                  <span className="text-[9px] text-emerald-600 font-bold">🔒 Terjamin 100% Aman</span>
+                </div>
+              </div>
+
+              {/* Categories Grid */}
+              <div>
+                <h4 className="text-xs font-bold text-slate-400 uppercase tracking-widest mb-3">Kategori Material Logistik</h4>
+                <div className="grid grid-cols-2 md:grid-cols-5 gap-3">
+                  {PRODUCT_CATEGORIES.map(cat => (
+                    <div 
+                      key={cat.id} 
+                      onClick={() => {
+                        setActiveTab('order');
+                        triggerToast(`Menyaring kategori: ${cat.name}`);
+                      }}
+                      className="bg-white border border-slate-100 hover:border-emerald-500/30 p-4 rounded-2xl cursor-pointer transition-all hover:shadow-md flex items-center gap-3 group"
+                    >
+                      <span className="text-2xl p-2.5 bg-slate-50 rounded-xl group-hover:bg-emerald-50 transition">{cat.icon}</span>
+                      <div>
+                        <h5 className="font-extrabold text-xs text-slate-900 leading-none">{cat.name}</h5>
+                        <p className="text-[9px] text-slate-400 mt-1">{cat.count}</p>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+
+            </div>
+          )}
+
+          {}
           {/* TAB 1: CEK STATUS RESI (LACAK REAL-TIME) */}
           {activeTab === 'tracking' && (
             <div className="space-y-6">
@@ -531,6 +633,7 @@ export default function App() {
             </div>
           )}
 
+          {}
           {/* TAB 2: CEK HARGA (KALKULATOR ONGKIR & ANTI-ODOL) */}
           {activeTab === 'price' && (
             <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
@@ -631,6 +734,7 @@ export default function App() {
             </div>
           )}
 
+          {}
           {/* TAB 3: CEK OUTLET DEPOT */}
           {activeTab === 'outlet' && (
             <div className="space-y-4">
@@ -683,6 +787,7 @@ export default function App() {
         </div>
       </section>
 
+      {}
       {/* =======================================================
           SIMULATOR CONTROL CENTER & MULTI-ROLE SANDBOX
           ======================================================= */}
@@ -769,6 +874,7 @@ export default function App() {
                 </div>
               )}
 
+              {}
               {/* ROLE: MERCHANT VIEW */}
               {activeRole === 'merchant' && (
                 <div className="bg-slate-800 p-5 rounded-2xl border border-slate-700/60 space-y-4">
@@ -795,6 +901,7 @@ export default function App() {
                 </div>
               )}
 
+              {}
               {/* ROLE: DRIVER VIEW */}
               {activeRole === 'driver' && (
                 <div className="bg-slate-800 p-5 rounded-2xl border border-slate-700/60 space-y-4">
@@ -931,6 +1038,7 @@ export default function App() {
         </div>
       </section>
 
+      {}
       {/* =======================================================
           FLOATING SIDEBAR MENU (RIGHT SIDE ACTION WIDGETS)
           ======================================================= */}
@@ -956,12 +1064,13 @@ export default function App() {
         ))}
       </div>
 
+      {}
       {/* =======================================================
           MODAL REGISTRASI VIP CLIENT / MITRA KONTRAKTOR
           ======================================================= */}
       {showVipModal && (
         <div className="fixed inset-0 bg-slate-900/60 backdrop-blur-sm z-50 flex items-center justify-center p-4">
-          <div className="bg-white rounded-[24px] w-full max-w-md p-6 shadow-2xl border border-slate-100 transform transition-all animate-in fade-in zoom-in-95">
+          <div className="bg-white rounded-[24px] w-full max-w-md p-6 shadow-2xl border border-slate-100 transform transition-all">
             <div className="flex justify-between items-center mb-4">
               <h3 className="text-base font-extrabold text-slate-900">👑 Pengajuan VIP Client (Kontraktor B2B)</h3>
               <button 
@@ -1038,6 +1147,7 @@ export default function App() {
         </div>
       )}
 
+      {}
       {/* =======================================================
           FOOTER INFORMASI & HAK CIPTA
           ======================================================= */}
