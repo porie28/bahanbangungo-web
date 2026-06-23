@@ -1,1182 +1,1227 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useMemo } from 'react';
+
 
 // ==========================================
-// DATA SIMULASI DATABASE UTAMA (MUTABLE)
+// MOCK DATA AWAL (SIMULASI DATABASE)
 // ==========================================
-const INITIAL_SHIPMENTS = [
-  {
-    id: 'BBG-998122',
-    item: '20 Sak Semen Gresik (1 Ton)',
-    sender: 'Depo Pusat Cengkareng, Jakarta Barat',
-    receiver: 'Proyek Cluster Harmoni, Tangerang',
-    status: 'Dalam Perjalanan',
-    statusDetail: 'Kurir sedang menuju lokasi proyek melalui jalan Tol Jakarta-Tangerang.',
-    driver: 'Pak Rudi Santoso',
-    fleet: 'Truk Engkel CDE',
-    progress: 65,
-    eta: '45 Menit',
-    weight: 1000,
-    volume: 0.7,
-    date: '23 Juni 2026',
-    history: [
-      { status: 'Pesanan Dibuat', time: '10:00 AM', desc: 'Sistem mengunci pembayaran escrow.' },
-      { status: 'Dikonfirmasi', time: '10:15 AM', desc: 'Merchant menyiapkan material semen.' },
-      { status: 'Picked Up', time: '11:00 AM', desc: 'Semen dimuat ke armada CDE.' },
-      { status: 'Dalam Perjalanan', time: '11:30 AM', desc: 'Truk melintasi tol Jakarta-Tangerang.' }
-    ]
-  },
-  {
-    id: 'BBG-776655',
-    item: 'Pasir Cor Merapi (1.5 m³)',
-    sender: 'Depo Tambang Merak, Banten',
-    receiver: 'Gudang Konstruksi Sudirman, Jakarta Selatan',
-    status: 'Disiapkan oleh Toko',
-    statusDetail: 'Barang sedang dimuat ke dalam armada dump truck.',
-    driver: 'Pak Budi Wijaya',
-    fleet: 'Truk Double CDD',
-    progress: 25,
-    eta: '2 Jam 15 Menit',
-    weight: 2100,
-    volume: 1.5,
-    date: '23 Juni 2026',
-    history: [
-      { status: 'Pesanan Dibuat', time: '09:00 AM', desc: 'Pesanan masuk ke sistem antrean.' },
-      { status: 'Disiapkan oleh Toko', time: '09:30 AM', desc: 'Alat berat mulai memuat pasir.' }
-    ]
-  },
-  {
-    id: 'BBG-112233',
-    item: 'Besi Beton SNI 10mm (50 Batang)',
-    sender: 'Pabrik Baja Cilegon, Serang',
-    receiver: 'Pembangunan Ruko Daan Mogot, Jakarta Barat',
-    status: 'Selesai',
-    statusDetail: 'Barang telah diterima oleh Bp. Ahmad (Kepala Tukang).',
-    driver: 'Pak Aris Nugroho',
-    fleet: 'Truk Double CDD',
-    progress: 100,
-    eta: 'Tiba di Lokasi',
-    weight: 600,
-    volume: 0.25,
-    date: '22 Juni 2026',
-    history: [
-      { status: 'Pesanan Dibuat', time: 'Yesterday', desc: 'Transaksi tervalidasi.' },
-      { status: 'Disiapkan oleh Toko', time: 'Yesterday', desc: 'Besi beton diikat aman.' },
-      { status: 'Dalam Perjalanan', time: 'Yesterday', desc: 'Perjalanan lancar via arteri.' },
-      { status: 'Selesai', time: 'Yesterday', desc: 'Diterima & TTD digital diverifikasi.' }
-    ]
-  }
+const INITIAL_MEMBERS = [
+  { id: 'MEM-001', name: 'Ahmad Supriadi', email: 'ahmad.supriadi@domain.com', role: 'Administrator', status: 'Active', joinedDate: '12 Jan 2026' },
+  { id: 'MEM-002', name: 'Siti Rahmawati', email: 'siti.rahma@domain.com', role: 'Editor', status: 'Active', joinedDate: '18 Feb 2026' },
+  { id: 'MEM-003', name: 'Budi Hartono', email: 'budi.hartono@domain.com', role: 'Member', status: 'Suspended', joinedDate: '01 Mar 2026' },
+  { id: 'MEM-004', name: 'Diana Lestari', email: 'diana.lestari@domain.com', role: 'Member', status: 'Active', joinedDate: '15 Apr 2026' },
+  { id: 'MEM-005', name: 'Eko Prasetyo', email: 'eko.prasetyo@domain.com', role: 'Editor', status: 'Active', joinedDate: '23 May 2026' },
 ];
 
-const DEPOT_OUTLETS = [
-  { region: 'Jakarta', name: 'Hub Utama Jakarta Barat - Cengkareng', address: 'Jl. Lingkar Luar No. 45, Cengkareng', tel: '+62 21-5544-3322' },
-  { region: 'Jakarta', name: 'Hub Jakarta Timur - Cakung', address: 'Kawasan Industri Pulogadung Blok C, Cakung', tel: '+62 21-5544-7788' },
-  { region: 'Tangerang', name: 'Hub Tangerang Raya - Batuceper', address: 'Jl. Pembangunan III No. 12, Batuceper', tel: '+62 21-5577-9911' },
-  { region: 'Bekasi', name: 'Hub Bekasi - Tambun', address: 'Jl. Sultan Hasanuddin No. 88, Tambun Selatan', tel: '+62 21-8899-2211' },
-  { region: 'Bandung', name: 'Hub Priangan - Soekarno Hatta', address: 'Jl. Soekarno-Hatta No. 624, Bandung', tel: '+62 22-7788-5544' }
+const INITIAL_BLOGS = [
+  { id: 'POST-01', title: 'Panduan Optimasi Logistik Proyek Konstruksi', category: 'Logistik', author: 'Ahmad Supriadi', status: 'Published', date: '10 Jun 2026', content: 'Mengoptimalkan alur distribusi bahan bangunan adalah kunci efisiensi anggaran proyek Anda...' },
+  { id: 'POST-02', title: 'Mengenal Bahaya Overloading (ODOL) Bagi Keselamatan Jalan', category: 'Keselamatan', author: 'Siti Rahmawati', status: 'Draft', date: '18 Jun 2026', content: 'ODOL tidak hanya merusak fasilitas jalan nasional tetapi juga membahayakan jiwa pengendara lain...' },
+  { id: 'POST-03', title: 'Tren Desain Interior Minimalis Modern Tahun 2026', category: 'Inspirasi', author: 'Diana Lestari', status: 'Published', date: '21 Jun 2026', content: 'Gaya minimalis monokrom dengan sentuhan material kayu alami kembali mendominasi tren hunian...' }
 ];
 
-const PRODUCT_CATEGORIES = [
-  { id: 'semen', name: 'Semen', icon: '🧱', count: '12 Varian' },
-  { id: 'pasir', name: 'Pasir & Kerikil', icon: '⏳', count: '5 Jenis' },
-  { id: 'besi', name: 'Besi & Baja', icon: '⛓️', count: '18 Ukuran' },
-  { id: 'cat', name: 'Cat & Pelapis', icon: '🎨', count: '24 Warna' },
-  { id: 'alat', name: 'Alat Berat', icon: '🚜', count: '4 Armada' }
+const INITIAL_REDEEMS = [
+  { id: 'RED-889', memberName: 'Diana Lestari', points: 1500, prize: 'Voucher Belanja Rp150.000', status: 'Pending', date: '22 Jun 2026' },
+  { id: 'RED-890', memberName: 'Budi Hartono', points: 3000, prize: 'Semen Gresik 10 Sak', status: 'Pending', date: '23 Jun 2026' },
+  { id: 'RED-885', memberName: 'Siti Rahmawati', points: 5000, prize: 'Emas Logam Mulia 0.5gr', status: 'Approved', date: '19 Jun 2026' },
+  { id: 'RED-886', memberName: 'Eko Prasetyo', points: 1000, prize: 'Free Ongkir Cargo Max 50km', status: 'Rejected', date: '15 Jun 2026' }
 ];
 
-const SLIDER_PHOTOS = [
-  {
-    id: 1,
-    title: 'PAKET BESAR & MATERIAL PROYEK, CARI BAHANBANGUNGO!',
-    desc: 'Pengiriman semen curah, pasir tambang, dan besi beton struktural dijamin aman dengan perlindungan anti-ODOL serta sistem lacak GPS real-time.',
-    badge: '⚡ CARGO PREMIUM',
-    bgGradient: 'from-emerald-900 via-emerald-800 to-teal-800'
-  },
-  {
-    id: 2,
-    title: '👑 REGISTRASI VIP CLIENT UNTUK KONTRAKTOR PROYEK',
-    desc: 'Nikmati kemudahan pembayaran termin (Tempo 30 Hari), diskon tarif pengiriman flat-rate 10%, serta fasilitas bebas biaya kuli bongkar di lokasi.',
-    badge: '💎 MEMBER B2B',
-    bgGradient: 'from-slate-900 via-blue-950 to-indigo-900'
-  },
-  {
-    id: 3,
-    title: '🛠️ KEAMANAN MUATAN PRIORITAS JALAN RAYA',
-    desc: 'Sistem logistik kami dilengkapi kecerdasan konversi berat-volume otomatis untuk merekomendasikan armada yang tepat sesuai regulasi jalan raya nasional.',
-    badge: '🛡️ GARANSI ANTI-ODOL',
-    bgGradient: 'from-amber-950 via-stone-900 to-emerald-950'
-  }
-];
+const CHARTS_DATA = {
+  daily: [30, 45, 35, 50, 40, 60, 55],
+  weekly: [120, 150, 180, 140, 210, 190, 240],
+  monthly: [450, 520, 610, 580, 720, 690, 810]
+};
 
 export default function App() {
-  const [activeTab, setActiveTab] = useState('dashboard'); // dashboard | tracking | price | outlet | order
-  const [shipments, setShipments] = useState(INITIAL_SHIPMENTS);
-  const [selectedShipmentId, setSelectedShipmentId] = useState('BBG-998122');
-  const [searchTrackingId, setSearchTrackingId] = useState('BBG-998122');
-  const [activeRole, setActiveRole] = useState('customer'); // customer | admin | driver | merchant
+  const [activeTab, setActiveTab] = useState('dashboard'); // dashboard | members | blog | redeem | settings
+  const [members, setMembers] = useState(INITIAL_MEMBERS);
+  const [blogs, setBlogs] = useState(INITIAL_BLOGS);
+  const [redeems, setRedeems] = useState(INITIAL_REDEEMS);
   
-  // Carousel Slider State
-  const [currentSlide, setCurrentSlide] = useState(0);
+  // State Input & Filter
+  const [searchQuery, setSearchQuery] = useState('');
+  const [chartRange, setChartRange] = useState('weekly'); // daily | weekly | monthly
+  const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
+  
+  // Modals & Forms State
+  const [showMemberModal, setShowMemberModal] = useState(false);
+  const [editingMember, setEditingMember] = useState(null);
+  const [memberForm, setMemberForm] = useState({ name: '', email: '', role: 'Member', status: 'Active' });
 
-  // State untuk Kalkulator Tarif (Cek Harga)
-  const [calcWeight, setCalcWeight] = useState(1500); // dalam Kg
-  const [calcVolume, setCalcVolume] = useState(1.2); // dalam m³
-  const [calcDistance, setCalcDistance] = useState(25); // dalam Km
-  const [calcFleet, setCalcFleet] = useState('engkel'); // pickup | engkel | double
-  const [helperService, setHelperService] = useState(true);
-  const [calculatedPrice, setCalculatedPrice] = useState(0);
-  const [odolAlert, setOdolAlert] = useState(false);
+  const [showBlogModal, setShowBlogModal] = useState(false);
+  const [blogForm, setBlogForm] = useState({ title: '', category: 'Logistik', content: '' });
 
-  // State untuk Pencarian Outlet
-  const [selectedRegion, setSelectedRegion] = useState('Jakarta');
+  const [showRedeemModal, setShowRedeemModal] = useState(false);
+  const [selectedRedeem, setSelectedRedeem] = useState(null);
 
-  // State untuk Registrasi VIP Client
-  const [showVipModal, setShowVipModal] = useState(false);
-  const [vipForm, setVipForm] = useState({ company: '', pic: '', phone: '', address: '' });
+  // Toast Alerts
+  const [toasts, setToasts] = useState([]);
 
-  // State Toast Pemberitahuan
-  const [toastMessage, setToastMessage] = useState(null);
+  const addToast = (message, type = 'success') => {
+    const id = Date.now();
+    setToasts((prev) => [...prev, { id, message, type }]);
+    setTimeout(() => {
+      setToasts((prev) => prev.filter((t) => t.id !== id));
+    }, 4000);
+  };
 
-  // State Tanda Tangan Driver (Canvas)
-  const canvasRef = useRef(null);
-  const [isDrawing, setIsDrawing] = useState(false);
-  const [signatureSaved, setSignatureSaved] = useState(false);
-  const [podPhoto, setPodPhoto] = useState(null);
+  // Perhitungan Statistik Dinamis berdasarkan State Terkini
+  const stats = useMemo(() => {
+    const totalMemb = members.length;
+    const activeMemb = members.filter(m => m.status === 'Active').length;
+    const totalBlogs = blogs.length;
+    const pendingRedeems = redeems.filter(r => r.status === 'Pending').length;
+    const approvedRedeemsCount = redeems.filter(r => r.status === 'Approved').length;
+    const approvedPointsValue = redeems
+      .filter(r => r.status === 'Approved')
+      .reduce((sum, item) => sum + item.points, 0);
 
-  // Auto-Slide untuk Banner Promosi
-  useEffect(() => {
-    const timer = setInterval(() => {
-      setCurrentSlide((prev) => (prev + 1) % SLIDER_PHOTOS.length);
-    }, 6000);
-    return () => clearInterval(timer);
-  }, []);
+    return {
+      totalMemb,
+      activeMemb,
+      totalBlogs,
+      pendingRedeems,
+      approvedRedeemsCount,
+      approvedPointsValue
+    };
+  }, [members, blogs, redeems]);
 
-  // Kalkulator Tarif & Proteksi ODOL
-  useEffect(() => {
-    let baseFare = 150000;
-    let ratePerKm = 8000;
-    let maxCapacity = 3000; // Default Truk Engkel CDE
-
-    if (calcFleet === 'pickup') {
-      baseFare = 75000;
-      ratePerKm = 5000;
-      maxCapacity = 1500;
-    } else if (calcFleet === 'double') {
-      baseFare = 250000;
-      ratePerKm = 12000;
-      maxCapacity = 7000;
-    }
-
-    // Hitung total tarif
-    let total = baseFare + (calcDistance * ratePerKm);
-    if (helperService) total += 50000; // Biaya kuli bongkar flat rate
-
-    setCalculatedPrice(total);
-
-    // Deteksi ODOL (Over Dimension Over Loading)
-    if (calcWeight > maxCapacity) {
-      setOdolAlert(true);
+  // Handler CRUD Anggota (Members)
+  const handleOpenMemberModal = (member = null) => {
+    if (member) {
+      setEditingMember(member);
+      setMemberForm({ name: member.name, email: member.email, role: member.role, status: member.status });
     } else {
-      setOdolAlert(false);
+      setEditingMember(null);
+      setMemberForm({ name: '', email: '', role: 'Member', status: 'Active' });
     }
-  }, [calcWeight, calcVolume, calcDistance, calcFleet, helperService]);
-
-  // Trigger Notifikasi Toast
-  const triggerToast = (msg) => {
-    setToastMessage(msg);
-    setTimeout(() => setToastMessage(null), 3500);
+    setShowMemberModal(true);
   };
 
-  // Mencari Detail Shipments berdasarkan ID
-  const searchedShipment = shipments.find(
-    s => s.id.toLowerCase().trim() === searchTrackingId.toLowerCase().trim()
-  );
+  const handleSaveMember = (e) => {
+    e.preventDefault();
+    if (!memberForm.name || !memberForm.email) {
+      addToast('Nama dan Email wajib diisi!', 'warning');
+      return;
+    }
 
-  const handleSimulateProgress = () => {
-    setShipments(prev => prev.map(s => {
-      if (s.id === selectedShipmentId) {
-        if (s.progress >= 100) {
-          triggerToast(`Muatan ${s.id} sudah selesai dikirim.`);
-          return s;
-        }
-        const nextProgress = Math.min(s.progress + 25, 100);
-        let nextStatus = s.status;
-        let nextDetail = s.statusDetail;
+    if (editingMember) {
+      // Edit Mode
+      setMembers(prev => prev.map(m => m.id === editingMember.id ? { ...m, ...memberForm } : m));
+      addToast(`Anggota ${memberForm.name} berhasil diperbarui.`);
+    } else {
+      // Add Mode
+      const newId = `MEM-${String(members.length + 1).padStart(3, '0')}`;
+      const newMember = {
+        id: newId,
+        ...memberForm,
+        joinedDate: new Date().toLocaleDateString('id-ID', { day: '2-digit', month: 'short', year: 'numeric' })
+      };
+      setMembers(prev => [...prev, newMember]);
+      addToast(`Anggota baru ${memberForm.name} sukses didaftarkan.`);
+    }
+    setShowMemberModal(false);
+  };
 
-        if (nextProgress === 100) {
-          nextStatus = 'Selesai';
-          nextDetail = 'Muatan telah sukses diserahterimakan dan ditandatangani.';
-        } else if (nextProgress > 75) {
-          nextStatus = 'Dalam Perjalanan';
-          nextDetail = 'Kurir telah keluar tol dan memasuki rute jalan raya kota tujuan.';
-        } else if (nextProgress > 50) {
-          nextStatus = 'Dalam Perjalanan';
-          nextDetail = 'Kurir sedang berada di rest area tol KM 57.';
-        }
+  const handleDeleteMember = (id, name) => {
+    setMembers(prev => prev.filter(m => m.id !== id));
+    addToast(`Akun ${name} telah dihapus dari sistem.`, 'warning');
+  };
 
-        const newHistory = [...s.history, {
-          status: nextStatus,
-          time: new Date().toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit' }),
-          desc: nextDetail
-        }];
+  // Handler Blog Posts
+  const handleCreateBlog = (e) => {
+    e.preventDefault();
+    if (!blogForm.title || !blogForm.content) {
+      addToast('Judul dan Konten blog tidak boleh kosong!', 'warning');
+      return;
+    }
 
-        triggerToast(`Status logistik ${s.id} berhasil diperbarui!`);
-        return { ...s, progress: nextProgress, status: nextStatus, statusDetail: nextDetail, eta: nextProgress === 100 ? 'Tiba' : s.eta, history: newHistory };
+    const newPost = {
+      id: `POST-${String(blogs.length + 1).padStart(2, '0')}`,
+      title: blogForm.title,
+      category: blogForm.category,
+      author: 'Super Admin',
+      status: 'Published',
+      date: new Date().toLocaleDateString('id-ID', { day: '2-digit', month: 'short', year: 'numeric' }),
+      content: blogForm.content
+    };
+
+    setBlogs(prev => [newPost, ...prev]);
+    setShowBlogModal(false);
+    setBlogForm({ title: '', category: 'Logistik', content: '' });
+    addToast('Artikel blog baru berhasil dipublikasikan!');
+  };
+
+  const handleDeleteBlog = (id) => {
+    setBlogs(prev => prev.filter(b => b.id !== id));
+    addToast('Artikel blog berhasil dihapus.', 'warning');
+  };
+
+  // Handler Redeem Requests
+  const handleProcessRedeem = (id, action) => {
+    setRedeems(prev => prev.map(r => {
+      if (r.id === id) {
+        return { ...r, status: action };
       }
-      return s;
+      return r;
     }));
+    setShowRedeemModal(false);
+    addToast(`Permintaan penukaran ${id} telah ${action === 'Approved' ? 'disetujui' : 'ditolak'}.`, action === 'Approved' ? 'success' : 'warning');
   };
 
-  // Handlers Tanda Tangan Canvas Driver
-  const startDrawing = (e) => {
-    const canvas = canvasRef.current;
-    if (!canvas) return;
-    const ctx = canvas.getContext('2d');
-    ctx.lineWidth = 3;
-    ctx.lineCap = 'round';
-    ctx.strokeStyle = '#000000';
-    const rect = canvas.getBoundingClientRect();
-    const clientX = e.clientX || (e.touches && e.touches[0].clientX);
-    const clientY = e.clientY || (e.touches && e.touches[0].clientY);
-    const x = clientX - rect.left;
-    const y = clientY - rect.top;
-    ctx.beginPath();
-    ctx.moveTo(x, y);
-    setIsDrawing(true);
-  };
+  // Filter Data Berdasarkan Query Pencarian Global
+  const filteredMembers = useMemo(() => {
+    return members.filter(m => 
+      m.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
+      m.email.toLowerCase().includes(searchQuery.toLowerCase()) ||
+      m.role.toLowerCase().includes(searchQuery.toLowerCase())
+    );
+  }, [members, searchQuery]);
 
-  const draw = (e) => {
-    if (!isDrawing) return;
-    const canvas = canvasRef.current;
-    const ctx = canvas.getContext('2d');
-    const rect = canvas.getBoundingClientRect();
-    const clientX = e.clientX || (e.touches && e.touches[0].clientX);
-    const clientY = e.clientY || (e.touches && e.touches[0].clientY);
-    const x = clientX - rect.left;
-    const y = clientY - rect.top;
-    ctx.lineTo(x, y);
-    ctx.stroke();
-  };
+  const filteredBlogs = useMemo(() => {
+    return blogs.filter(b => 
+      b.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
+      b.category.toLowerCase().includes(searchQuery.toLowerCase())
+    );
+  }, [blogs, searchQuery]);
 
-  const saveSignature = () => {
-    setSignatureSaved(true);
-    triggerToast('Tanda tangan digital penerima berhasil dikunci!');
-  };
-
-  const handleCompleteDelivery = (shipmentId) => {
-    setShipments(prev => prev.map(s => {
-      if (s.id === shipmentId) {
-        return {
-          ...s,
-          status: 'Selesai',
-          statusDetail: 'Selesai. Barang diterima dengan baik di lokasi proyek.',
-          progress: 100,
-          eta: 'Tiba',
-          history: [...s.history, { status: 'Selesai', time: 'Just Now', desc: 'Diterima oleh kepala proyek.' }]
-        };
-      }
-      return s;
-    }));
-    setPodPhoto(null);
-    setSignatureSaved(false);
-    triggerToast(`Pengiriman ${shipmentId} sukses diselesaikan! Dana Escrow dicairkan.`);
-  };
+  const filteredRedeems = useMemo(() => {
+    return redeems.filter(r => 
+      r.memberName.toLowerCase().includes(searchQuery.toLowerCase()) ||
+      r.prize.toLowerCase().includes(searchQuery.toLowerCase()) ||
+      r.status.toLowerCase().includes(searchQuery.toLowerCase())
+    );
+  }, [redeems, searchQuery]);
 
   return (
-    <div className="min-h-screen bg-[#F8FAFC] font-sans text-slate-800 flex flex-col justify-between antialiased selection:bg-[#00805A] selection:text-white">
+    <div className="min-h-screen bg-[#F5F5F5] font-sans text-[#212121] flex antialiased selection:bg-[#1E88E5]/20">
       
-      {}
+      {/* INJECTED GLOBAL STYLES (CUSTOM FONTS & TOKENS) */}
       <style>{`
-        @import url('https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap');
+        @import url('https://fonts.googleapis.com/css2?family=Poppins:wght@500;600;700&family=Inter:wght@400;500;600;700&family=Open+Sans:wght@400;500;600&display=swap');
         
-        body {
-          font-family: 'Plus Jakarta Sans', sans-serif !important;
-          background-color: #F8FAFC;
+        .font-poppins {
+          font-family: 'Poppins', sans-serif;
+        }
+        .font-inter {
+          font-family: 'Inter', sans-serif;
+        }
+        .font-opensans {
+          font-family: 'Open Sans', sans-serif;
         }
 
-        .bg-logistics-green {
-          background-color: #00805A;
+        /* Custom Scrollbar for Sleek Aesthetic */
+        ::-webkit-scrollbar {
+          width: 6px;
+          height: 6px;
         }
-
-        .text-logistics-green {
-          color: #00805A;
+        ::-webkit-scrollbar-track {
+          background: #F5F5F5;
         }
-
-        .bg-logistics-yellow {
-          background-color: #F2C335;
+        ::-webkit-scrollbar-thumb {
+          background: #E0E0E0;
+          border-radius: 10px;
         }
-
-        .custom-glass {
-          background: rgba(255, 255, 255, 0.9);
-          backdrop-filter: blur(12px);
-          border: 1px solid rgba(255, 255, 255, 0.6);
-        }
-
-        .no-scrollbar::-webkit-scrollbar {
-          display: none;
-        }
-        .no-scrollbar {
-          -ms-overflow-style: none;
-          scrollbar-width: none;
+        ::-webkit-scrollbar-thumb:hover {
+          background: #BDBDBD;
         }
       `}</style>
 
-      {/* TOAST ALERTS */}
-      {toastMessage && (
-        <div className="fixed top-24 left-1/2 transform -translate-x-1/2 z-[100] bg-slate-900 text-white text-xs font-bold px-6 py-3.5 rounded-full shadow-2xl flex items-center gap-2.5 animate-bounce border border-slate-800">
-          <span className="w-2.5 h-2.5 rounded-full bg-[#F2C335] animate-ping"></span>
-          <span>{toastMessage}</span>
-        </div>
-      )}
-
-      {/* =======================================================
-          TOP NAVBAR (LOGISTICS ENTERPRISE STANDARD)
-          ======================================================= */}
-      <header className="bg-white border-b border-slate-100 sticky top-0 z-40 shadow-sm">
-        <div className="max-w-7xl mx-auto px-4 py-3 flex justify-between items-center">
-          <div className="flex items-center gap-8">
-            {/* Logo Brand */}
-            <div className="flex items-center gap-2 cursor-pointer" onClick={() => setActiveTab('dashboard')}>
-              <span className="text-3xl">🏗️</span>
-              <div>
-                <h1 className="font-extrabold text-xl tracking-tight text-slate-900 leading-none flex items-center gap-1.5">
-                  BahanBangun<span className="text-[#00805A]">Go</span>
-                  <span className="text-[10px] bg-slate-100 text-[#00805A] px-2 py-0.5 rounded-md font-bold uppercase">Cargo</span>
-                </h1>
-                <p className="text-[10px] text-slate-400 font-bold tracking-widest mt-0.5">INTEGRATED LOGISTICS PORTAL</p>
-              </div>
-            </div>
-
-            {/* Desktop Nav Links */}
-            <nav className="hidden lg:flex items-center gap-6 text-xs font-bold text-slate-600">
-              <button onClick={() => setActiveTab('dashboard')} className={`hover:text-[#00805A] transition uppercase ${activeTab === 'dashboard' ? 'text-[#00805A]' : ''}`}>Dashboard</button>
-              <button onClick={() => setActiveTab('tracking')} className={`hover:text-[#00805A] transition uppercase ${activeTab === 'tracking' ? 'text-[#00805A]' : ''}`}>Lacak Resi</button>
-              <button onClick={() => setActiveTab('price')} className={`hover:text-[#00805A] transition uppercase ${activeTab === 'price' ? 'text-[#00805A]' : ''}`}>Kalkulator</button>
-              <button onClick={() => setActiveTab('outlet')} className={`hover:text-[#00805A] transition uppercase ${activeTab === 'outlet' ? 'text-[#00805A]' : ''}`}>Cabang Hub</button>
-            </nav>
-          </div>
-
-          <div className="flex items-center gap-3">
-            {/* VIP Client Portal Action Button */}
-            <button 
-              onClick={() => setShowVipModal(true)}
-              className="bg-[#F2C335] hover:bg-[#E0B224] text-slate-950 text-xs font-extrabold px-4 py-2.5 rounded-xl transition shadow-md shadow-amber-500/10"
-            >
-              👑 Registrasi VIP Client
-            </button>
-            <span className="w-px h-6 bg-slate-200"></span>
-            <span className="text-xs font-bold text-slate-600 hidden sm:inline">👤 Contractor_Hub</span>
-          </div>
-        </div>
-      </header>
-
-      {}
-      {/* =======================================================
-          DYNAMIC PHOTO SLIDER (DYNAMIC BANNER CAROUSEL)
-          ======================================================= */}
-      <section className="relative overflow-hidden text-white transition-all duration-700 ease-in-out">
-        <div className={`bg-gradient-to-r ${SLIDER_PHOTOS[currentSlide].bgGradient} py-12 lg:py-20 px-4 transition-all duration-700`}>
-          
-          <div className="max-w-7xl mx-auto grid grid-cols-1 lg:grid-cols-12 gap-8 items-center relative z-10">
-            <div className="lg:col-span-8 space-y-4 text-center lg:text-left">
-              <span className="inline-flex items-center gap-1.5 bg-[#F2C335] text-slate-950 font-black text-[10px] px-3.5 py-1 rounded-full uppercase tracking-widest">
-                {SLIDER_PHOTOS[currentSlide].badge}
-              </span>
-              <h2 className="text-3xl lg:text-5xl font-black tracking-tight leading-tight uppercase transition-all duration-500">
-                {SLIDER_PHOTOS[currentSlide].title}
-              </h2>
-              <p className="text-sm text-emerald-100 max-w-2xl font-medium leading-relaxed">
-                {SLIDER_PHOTOS[currentSlide].desc}
-              </p>
-              
-              <div className="pt-2 flex flex-wrap justify-center lg:justify-start gap-3">
-                <button 
-                  onClick={() => setShowVipModal(true)}
-                  className="bg-[#F2C335] hover:bg-white hover:text-slate-900 text-slate-950 font-black text-xs px-6 py-3 rounded-xl transition shadow-lg"
-                >
-                  Daftar Kontraktor VIP
-                </button>
-                <button 
-                  onClick={() => {
-                    setActiveTab('price');
-                    triggerToast('Membuka Kalkulator Ongkir.');
-                  }}
-                  className="bg-white/10 hover:bg-white/20 border border-white/20 font-bold text-xs px-5 py-3 rounded-xl transition"
-                >
-                  📊 Kalkulator ODOL
-                </button>
-              </div>
-            </div>
-
-            {/* Graphic Side: Interactive Visual Representation */}
-            <div className="lg:col-span-4 hidden lg:flex justify-end relative">
-              <div className="bg-white/10 backdrop-blur-md rounded-3xl p-6 border border-white/10 shadow-2xl w-full max-w-sm">
-                <p className="text-xs font-bold text-emerald-300 uppercase tracking-wider mb-2">Simulasi Status Ekspedisi</p>
-                <div className="space-y-4">
-                  <div className="flex items-center gap-3">
-                    <span className="text-2xl">🚛</span>
-                    <div>
-                      <h4 className="text-xs font-bold text-white">CDE Engkel Jakarta</h4>
-                      <p className="text-[10px] text-slate-300">Muatan Semen Padang (1 Ton)</p>
-                    </div>
-                  </div>
-                  <div className="h-1.5 bg-white/20 rounded-full overflow-hidden">
-                    <div className="h-full bg-[#F2C335] animate-pulse" style={{ width: '65%' }}></div>
-                  </div>
-                  <div className="flex justify-between text-[10px] text-emerald-100">
-                    <span>Estimasi Selesai</span>
-                    <span className="font-bold">45 Menit</span>
-                  </div>
-                </div>
-              </div>
-            </div>
-          </div>
-
-          {/* Slider Controls / Dots */}
-          <div className="absolute bottom-4 left-1/2 transform -translate-x-1/2 flex gap-2 z-20">
-            {SLIDER_PHOTOS.map((_, index) => (
-              <button
-                key={index}
-                onClick={() => setCurrentSlide(index)}
-                className={`w-2.5 h-2.5 rounded-full transition-all ${
-                  currentSlide === index ? 'bg-[#F2C335] w-6' : 'bg-white/40'
-                }`}
-                aria-label={`Go to slide ${index + 1}`}
-              />
-            ))}
-          </div>
-
-        </div>
-      </section>
-
-      {}
-      {/* =======================================================
-          WIDGET HUB UTAMA (CEK STATUS, CEK HARGA, CEK OUTLET)
-          ======================================================= */}
-      <section className="max-w-7xl w-full mx-auto px-4 -mt-8 relative z-20">
-        <div className="bg-white rounded-[24px] shadow-xl border border-slate-100 p-5 lg:p-6">
-          
-          {/* Tabs Navigator */}
-          <div className="grid grid-cols-2 md:grid-cols-5 gap-2 border-b border-slate-100 pb-4 mb-6">
-            {[
-              { id: 'dashboard', label: '📊 Dasbor Analitik', icon: '📈' },
-              { id: 'tracking', label: '🔍 Lacak Resi', icon: '📦' },
-              { id: 'price', label: '⚖️ Cek Tarif (Anti-ODOL)', icon: '💵' },
-              { id: 'outlet', label: '🏪 Cari Outlet Hub', icon: '📍' },
-              { id: 'order', label: '🏗️ Buat Order Baru', icon: '📝' }
-            ].map(tab => (
-              <button
-                key={tab.id}
-                onClick={() => {
-                  setActiveTab(tab.id);
-                  triggerToast(`Membuka panel ${tab.label}`);
-                }}
-                className={`flex items-center gap-2 px-4 py-3 rounded-xl text-xs font-extrabold transition-all ${
-                  activeTab === tab.id 
-                    ? 'bg-[#00805A] text-white shadow-md shadow-emerald-700/10' 
-                    : 'bg-slate-50 text-slate-500 hover:bg-slate-100'
-                }`}
-              >
-                <span>{tab.icon}</span>
-                <span>{tab.label}</span>
-              </button>
-            ))}
-          </div>
-
-          {}
-          {/* TAB: DASHBOARD ANALITIK */}
-          {activeTab === 'dashboard' && (
-            <div className="space-y-6">
-              
-              {/* Stats Counters */}
-              <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
-                <div className="bg-slate-50 border border-slate-100 p-4 rounded-2xl">
-                  <p className="text-[10px] text-slate-400 font-bold uppercase tracking-wider">Total Muatan Aktif</p>
-                  <p className="text-2xl font-extrabold text-slate-900 mt-1">3 Pengiriman</p>
-                  <span className="text-[9px] text-emerald-600 font-bold">🟢 3 Armada di Jalan</span>
-                </div>
-                <div className="bg-slate-50 border border-slate-100 p-4 rounded-2xl">
-                  <p className="text-[10px] text-slate-400 font-bold uppercase tracking-wider">Tonase Logistik</p>
-                  <p className="text-2xl font-extrabold text-slate-900 mt-1">3.700 Kg</p>
-                  <span className="text-[9px] text-emerald-600 font-bold">⚖️ Bebas ODOL</span>
-                </div>
-                <div className="bg-slate-50 border border-slate-100 p-4 rounded-2xl">
-                  <p className="text-[10px] text-slate-400 font-bold uppercase tracking-wider">Cabang Hub Depot</p>
-                  <p className="text-2xl font-extrabold text-slate-900 mt-1">5 Wilayah</p>
-                  <span className="text-[9px] text-slate-500 font-bold">📍 Jawa & Banten</span>
-                </div>
-                <div className="bg-slate-50 border border-slate-100 p-4 rounded-2xl">
-                  <p className="text-[10px] text-slate-400 font-bold uppercase tracking-wider">Dana Escrow Terkunci</p>
-                  <p className="text-2xl font-extrabold text-slate-900 mt-1">Rp 12.5M</p>
-                  <span className="text-[9px] text-emerald-600 font-bold">🔒 Terjamin 100% Aman</span>
-                </div>
-              </div>
-
-              {/* Categories Grid */}
-              <div>
-                <h4 className="text-xs font-bold text-slate-400 uppercase tracking-widest mb-3">Kategori Material Logistik</h4>
-                <div className="grid grid-cols-2 md:grid-cols-5 gap-3">
-                  {PRODUCT_CATEGORIES.map(cat => (
-                    <div 
-                      key={cat.id} 
-                      onClick={() => {
-                        setActiveTab('order');
-                        triggerToast(`Menyaring kategori: ${cat.name}`);
-                      }}
-                      className="bg-white border border-slate-100 hover:border-emerald-500/30 p-4 rounded-2xl cursor-pointer transition-all hover:shadow-md flex items-center gap-3 group"
-                    >
-                      <span className="text-2xl p-2.5 bg-slate-50 rounded-xl group-hover:bg-emerald-50 transition">{cat.icon}</span>
-                      <div>
-                        <h5 className="font-extrabold text-xs text-slate-900 leading-none">{cat.name}</h5>
-                        <p className="text-[9px] text-slate-400 mt-1">{cat.count}</p>
-                      </div>
-                    </div>
-                  ))}
-                </div>
-              </div>
-
-            </div>
-          )}
-
-          {}
-          {/* TAB 1: CEK STATUS RESI (LACAK REAL-TIME) */}
-          {activeTab === 'tracking' && (
-            <div className="space-y-6">
-              <div className="flex flex-col md:flex-row gap-3">
-                <div className="flex-1 relative">
-                  <span className="absolute left-4 top-1/2 transform -translate-y-1/2 text-slate-400">🎫</span>
-                  <input 
-                    type="text" 
-                    value={searchTrackingId}
-                    onChange={(e) => setSearchTrackingId(e.target.value)}
-                    placeholder="Masukkan Nomor Resi / ID Order Anda (Contoh: BBG-998122, BBG-776655)" 
-                    className="w-full text-xs font-bold border border-slate-200 rounded-xl pl-10 pr-4 py-3.5 focus:outline-none focus:ring-2 focus:ring-[#00805A]"
-                  />
-                </div>
-                <button 
-                  onClick={() => {
-                    if (searchedShipment) {
-                      triggerToast(`Resi ${searchTrackingId} ditemukan!`);
-                    } else {
-                      triggerToast(`Resi tidak ditemukan. Gunakan ID simulasi.`);
-                    }
-                  }}
-                  className="bg-[#00805A] hover:bg-[#006647] text-white text-xs font-black px-6 py-3.5 rounded-xl transition"
-                >
-                  CEK RESI
-                </button>
-              </div>
-
-              {/* Hasil Pelacakan Resi */}
-              {searchedShipment ? (
-                <div className="bg-slate-50 rounded-2xl p-5 border border-slate-100 grid grid-cols-1 lg:grid-cols-12 gap-6">
-                  
-                  {/* Informasi Ringkas */}
-                  <div className="lg:col-span-4 space-y-4 border-b lg:border-b-0 lg:border-r border-slate-200 pb-5 lg:pb-0 lg:pr-6">
-                    <div>
-                      <span className="text-[10px] bg-emerald-100 text-[#00805A] px-2.5 py-1 rounded-md font-bold uppercase">{searchedShipment.status}</span>
-                      <h4 className="text-base font-extrabold text-slate-900 mt-2">{searchedShipment.id}</h4>
-                      <p className="text-xs text-slate-400 mt-0.5">Tanggal Pengapalan: {searchedShipment.date}</p>
-                    </div>
-
-                    <div className="text-xs space-y-2 text-slate-600">
-                      <p>📦 <b>Barang:</b> {searchedShipment.item}</p>
-                      <p>🚛 <b>Armada:</b> {searchedShipment.fleet}</p>
-                      <p>👨‍✈️ <b>Driver:</b> {searchedShipment.driver}</p>
-                      <p>⏳ <b>Estimasi Tiba:</b> {searchedShipment.eta}</p>
-                    </div>
-                  </div>
-
-                  {/* Rute & Live Stepper Progress */}
-                  <div className="lg:col-span-8 flex flex-col justify-between">
-                    <div>
-                      <h5 className="font-extrabold text-xs text-slate-800 mb-3">Timeline Pelacakan Pengiriman:</h5>
-                      
-                      {/* Horizontal progress tracker */}
-                      <div className="relative py-4">
-                        <div className="h-1 bg-slate-200 rounded-full w-full absolute top-1/2 transform -translate-y-1/2"></div>
-                        <div 
-                          className="h-1 bg-[#00805A] rounded-full absolute top-1/2 transform -translate-y-1/2 transition-all duration-700"
-                          style={{ width: `${searchedShipment.progress}%` }}
-                        ></div>
-                        
-                        {/* Stepper Milestones */}
-                        <div className="flex justify-between relative z-10">
-                          <div className="flex flex-col items-center">
-                            <span className="w-4 h-4 rounded-full border-2 border-white bg-[#00805A]"></span>
-                            <span className="text-[9px] font-bold text-slate-500 mt-1">Disiapkan</span>
-                          </div>
-                          <div className="flex flex-col items-center">
-                            <span className={`w-4 h-4 rounded-full border-2 border-white ${searchedShipment.progress >= 50 ? 'bg-[#00805A]' : 'bg-slate-200'}`}></span>
-                            <span className="text-[9px] font-bold text-slate-500 mt-1">Dalam Perjalanan</span>
-                          </div>
-                          <div className="flex flex-col items-center">
-                            <span className={`w-4 h-4 rounded-full border-2 border-white ${searchedShipment.progress >= 100 ? 'bg-[#00805A]' : 'bg-slate-200'}`}></span>
-                            <span className="text-[9px] font-bold text-slate-500 mt-1">Tiba</span>
-                          </div>
-                        </div>
-                      </div>
-                    </div>
-
-                    <div className="bg-[#00805A]/5 border border-[#00805A]/10 rounded-xl p-3 mt-4">
-                      <p className="text-[10px] text-[#00805A] font-bold uppercase tracking-wider">Status Terkini:</p>
-                      <p className="text-xs text-slate-700 font-medium mt-1">"{searchedShipment.statusDetail}"</p>
-                    </div>
-                  </div>
-
-                </div>
-              ) : (
-                <div className="text-center py-6 bg-slate-50 rounded-2xl border border-dashed border-slate-200">
-                  <span className="text-3xl">⚠️</span>
-                  <p className="text-xs text-slate-500 font-bold mt-2">Nomor resi "{searchTrackingId}" tidak ditemukan. Harap pastikan kembali.</p>
-                </div>
-              )}
-            </div>
-          )}
-
-          {}
-          {/* TAB 2: CEK HARGA (KALKULATOR ONGKIR & ANTI-ODOL) */}
-          {activeTab === 'price' && (
-            <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
-              
-              {/* Parameter Input */}
-              <div className="lg:col-span-7 space-y-4">
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                  <div>
-                    <label className="block text-[10px] font-bold text-slate-400 uppercase mb-1">Pilih Jenis Kendaraan / Armada</label>
-                    <select 
-                      value={calcFleet}
-                      onChange={(e) => setCalcFleet(e.target.value)}
-                      className="w-full text-xs font-bold border border-slate-200 rounded-xl p-3 focus:outline-none focus:ring-1 focus:ring-[#00805A]"
-                    >
-                      <option value="pickup">🚗 Mobil Pick-Up (Maks 1.5 Ton)</option>
-                      <option value="engkel">🚚 Truk Engkel CDE (Maks 3 Ton)</option>
-                      <option value="double">🚛 Truk Double CDD (Maks 7 Ton)</option>
-                    </select>
-                  </div>
-
-                  <div>
-                    <label className="block text-[10px] font-bold text-slate-400 uppercase mb-1">Jarak Pengiriman (Km)</label>
-                    <input 
-                      type="number" 
-                      value={calcDistance}
-                      onChange={(e) => setCalcDistance(Math.max(1, parseInt(e.target.value) || 0))}
-                      className="w-full text-xs font-bold border border-slate-200 rounded-xl p-3 focus:outline-none focus:ring-1 focus:ring-[#00805A]"
-                    />
-                  </div>
-                </div>
-
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                  <div>
-                    <label className="block text-[10px] font-bold text-slate-400 uppercase mb-1">Total Berat Muatan (Kg)</label>
-                    <input 
-                      type="number" 
-                      value={calcWeight}
-                      onChange={(e) => setCalcWeight(Math.max(1, parseInt(e.target.value) || 0))}
-                      className="w-full text-xs font-bold border border-slate-200 rounded-xl p-3 focus:outline-none focus:ring-1 focus:ring-[#00805A]"
-                    />
-                  </div>
-
-                  <div>
-                    <label className="block text-[10px] font-bold text-slate-400 uppercase mb-1">Estimasi Volume (m³)</label>
-                    <input 
-                      type="number" 
-                      step="0.1"
-                      value={calcVolume}
-                      onChange={(e) => setCalcVolume(Math.max(0.1, parseFloat(e.target.value) || 0))}
-                      className="w-full text-xs font-bold border border-slate-200 rounded-xl p-3 focus:outline-none focus:ring-1 focus:ring-[#00805A]"
-                    />
-                  </div>
-                </div>
-
-                <div>
-                  <label className="flex items-center gap-2 cursor-pointer bg-slate-50 p-3 rounded-xl border border-slate-100">
-                    <input 
-                      type="checkbox" 
-                      checked={helperService}
-                      onChange={(e) => setHelperService(e.target.checked)}
-                      className="rounded text-[#00805A] focus:ring-[#00805A] w-4 h-4"
-                    />
-                    <div className="text-xs">
-                      <p className="font-bold text-slate-800">Tambahkan Jasa Helper (Kuli Bongkar Muat)</p>
-                      <p className="text-[10px] text-slate-400">Bantuan menaikkan/menurunkan semen & besi ke proyek (+Rp50.000)</p>
-                    </div>
-                  </label>
-                </div>
-              </div>
-
-              {/* Summary Kalkulasi & Keamanan */}
-              <div className="lg:col-span-5 bg-slate-50 rounded-2xl p-5 border border-slate-100 flex flex-col justify-between">
-                <div>
-                  <h4 className="font-extrabold text-xs text-slate-400 uppercase tracking-widest">Estimasi Ongkos Kirim</h4>
-                  <p className="text-2xl font-black text-slate-900 mt-1">Rp {calculatedPrice.toLocaleString('id-ID')}</p>
-                  
-                  <div className="text-[11px] text-slate-500 space-y-1.5 mt-4 border-t border-slate-200 pt-3">
-                    <p>🛣️ <b>Jarak Rute:</b> {calcDistance} Km</p>
-                    <p>⚖️ <b>Bobot Muatan:</b> {calcWeight} Kg</p>
-                    <p>📦 <b>Kebutuhan Ruang:</b> {calcVolume} m³</p>
-                  </div>
-                </div>
-
-                {/* ODOL Alert Indicator */}
-                <div className={`mt-4 p-3 rounded-xl border text-xs font-semibold ${
-                  odolAlert 
-                    ? 'bg-rose-50 border-rose-200 text-rose-800' 
-                    : 'bg-emerald-50 border-emerald-200 text-emerald-800'
-                }`}>
-                  {odolAlert ? (
-                    <p>🚨 <b>Overloading Warning (ODOL)!</b> Bobot melebihi kapasitas standar armada pilihan Anda. Harap tingkatkan armada atau pecah muatan.</p>
-                  ) : (
-                    <p>✅ <b>Safety Cleared!</b> Muatan Anda aman sesuai regulasi daya angkut jalan raya nasional.</p>
-                  )}
-                </div>
-              </div>
-
-            </div>
-          )}
-
-          {}
-          {/* TAB 3: CEK OUTLET DEPOT */}
-          {activeTab === 'outlet' && (
-            <div className="space-y-4">
-              <div className="flex gap-2">
-                {['Jakarta', 'Tangerang', 'Bekasi', 'Bandung'].map(city => (
-                  <button
-                    key={city}
-                    onClick={() => setSelectedRegion(city)}
-                    className={`px-4 py-2 rounded-xl text-xs font-bold transition ${
-                      selectedRegion === city 
-                        ? 'bg-[#00805A] text-white' 
-                        : 'bg-slate-50 text-slate-600 hover:bg-slate-100'
-                    }`}
-                  >
-                    📍 {city}
-                  </button>
-                ))}
-              </div>
-
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                {DEPOT_OUTLETS.filter(o => o.region === selectedRegion).map((outlet, index) => (
-                  <div key={index} className="bg-slate-50 p-4 rounded-xl border border-slate-100 flex justify-between items-center">
-                    <div>
-                      <h4 className="font-extrabold text-xs text-slate-800">🏪 {outlet.name}</h4>
-                      <p className="text-[11px] text-slate-400 mt-1">{outlet.address}</p>
-                      <p className="text-[10px] text-slate-500 font-bold mt-1.5">📞 {outlet.tel}</p>
-                    </div>
-                    <span className="text-emerald-600 font-extrabold text-xs bg-emerald-50 px-2.5 py-1 rounded-lg">BUKA</span>
-                  </div>
-                ))}
-              </div>
-            </div>
-          )}
-
-          {/* TAB 4: BUAT ORDER PORTAL (FAST CHECKOUT) */}
-          {activeTab === 'order' && (
-            <div className="bg-[#00805A]/5 rounded-2xl p-5 border border-[#00805A]/10 text-center space-y-3">
-              <span className="text-4xl">🏗️</span>
-              <h4 className="font-black text-slate-800 text-base">Butuh Pengiriman Material Proyek Sekarang?</h4>
-              <p className="text-xs text-slate-500 max-w-md mx-auto">Kami mengintegrasikan logistik instan langsung dengan toko besi & semen terdekat. Klik di bawah untuk login & pendaftaran VIP.</p>
-              <button 
-                onClick={() => setShowVipModal(true)}
-                className="bg-[#F2C335] hover:bg-slate-900 hover:text-white text-slate-950 font-black text-xs px-6 py-3 rounded-xl transition"
-              >
-                MULAI BUAT ORDER PROYEK
-              </button>
-            </div>
-          )}
-
-        </div>
-      </section>
-
-      {}
-      {/* =======================================================
-          SIMULATOR CONTROL CENTER & MULTI-ROLE SANDBOX
-          ======================================================= */}
-      <section className="max-w-7xl w-full mx-auto p-4 mt-8">
-        <div className="bg-slate-900 rounded-[28px] p-6 text-white shadow-xl">
-          <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 border-b border-slate-800 pb-4 mb-6">
-            <div>
-              <span className="text-[9px] bg-amber-500 text-slate-950 px-2 py-0.5 rounded-md font-bold uppercase">Simulator Hub</span>
-              <h3 className="text-base font-black tracking-tight mt-1">🎛️ Pusat Simulasi Alur Logistik</h3>
-              <p className="text-[11px] text-slate-400 mt-0.5">Ubah peran untuk menguji alur penyiapan barang dari toko, pengantaran driver, hingga tanda tangan PoD.</p>
-            </div>
-
-            {/* Role Switcher */}
-            <div className="flex flex-wrap gap-1.5 bg-slate-800 p-1 rounded-xl">
-              {[
-                { id: 'customer', label: 'Konsumen', icon: '👤' },
-                { id: 'merchant', label: 'Toko Material', icon: '🏪' },
-                { id: 'driver', label: 'Driver Truk', icon: '🚛' }
-              ].map(role => (
-                <button
-                  key={role.id}
-                  onClick={() => {
-                    setActiveRole(role.id);
-                    triggerToast(`Mode disetel ke: ${role.label}`);
-                  }}
-                  className={`flex items-center gap-1 px-3 py-1.5 rounded-lg text-xs font-bold transition-all ${
-                    activeRole === role.id 
-                      ? 'bg-[#00805A] text-white shadow-md' 
-                      : 'text-slate-400 hover:text-slate-200'
-                  }`}
-                >
-                  <span>{role.icon}</span>
-                  <span>{role.label}</span>
-                </button>
-              ))}
-            </div>
-          </div>
-
-          {/* SIMULATOR SCREEN CONTENT */}
-          <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
-            
-            {/* SISI KIRI: AKSI PERAN (SANDBOX) */}
-            <div className="lg:col-span-8 space-y-4">
-              
-              {/* ROLE: CUSTOMER VIEW */}
-              {activeRole === 'customer' && (
-                <div className="bg-slate-800 p-5 rounded-2xl border border-slate-700/60 space-y-4">
-                  <h4 className="font-extrabold text-sm text-[#F2C335]">🛒 Panel Pelanggan (Cari & Pesan Logistik)</h4>
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                    <div className="space-y-3">
-                      <p className="text-xs text-slate-300 font-bold">Simulasi Material Yang Dipesan:</p>
-                      <div className="bg-slate-900 p-3.5 rounded-xl border border-slate-800 text-xs flex justify-between items-center">
-                        <div>
-                          <p className="font-bold">20 Sak Semen Padang 50kg</p>
-                          <p className="text-[10px] text-slate-500 mt-0.5">Total Bobot: 1.000 Kg (1 Ton)</p>
-                        </div>
-                        <span className="font-extrabold">Rp 1.440.000</span>
-                      </div>
-                    </div>
-
-                    <div className="space-y-3">
-                      <p className="text-xs text-slate-300 font-bold">Pilih ID Kiriman yang Mau Dipantau:</p>
-                      <div className="grid grid-cols-1 gap-2">
-                        {shipments.map(s => (
-                          <button
-                            key={s.id}
-                            onClick={() => {
-                              setSelectedShipmentId(s.id);
-                              setSearchTrackingId(s.id);
-                              triggerToast(`Memantau ID ${s.id}`);
-                            }}
-                            className={`p-3 rounded-xl border text-xs font-bold text-left transition ${
-                              selectedShipmentId === s.id 
-                                ? 'border-[#F2C335] bg-[#F2C335]/10 text-[#F2C335]' 
-                                : 'border-slate-700 hover:bg-slate-700 text-slate-300'
-                            }`}
-                          >
-                            🚚 {s.id} ({s.item}) - <span className="font-extrabold">{s.status}</span>
-                          </button>
-                        ))}
-                      </div>
-                    </div>
-                  </div>
-                </div>
-              )}
-
-              {}
-              {/* ROLE: MERCHANT VIEW */}
-              {activeRole === 'merchant' && (
-                <div className="bg-slate-800 p-5 rounded-2xl border border-slate-700/60 space-y-4">
-                  <h4 className="font-extrabold text-sm text-[#F2C335]">🏪 Panel Mitra Toko (Penyiapan Material)</h4>
-                  <p className="text-xs text-slate-300">Gunakan tombol simulasi di bawah untuk mempercepat progress pengantaran kurir di database.</p>
-                  
-                  <div className="flex gap-3">
-                    <button
-                      onClick={handleSimulateProgress}
-                      className="bg-[#00805A] hover:bg-[#006647] text-white font-extrabold text-xs px-5 py-3 rounded-xl transition flex items-center gap-2"
-                    >
-                      ⚡ Gerakkan Kurir (Simulate Progress)
-                    </button>
-                    <button
-                      onClick={() => {
-                        setShipments(INITIAL_SHIPMENTS);
-                        triggerToast('Data simulasi logistik disetel ulang.');
-                      }}
-                      className="bg-slate-700 hover:bg-slate-600 text-slate-200 font-bold text-xs px-4 py-3 rounded-xl transition"
-                    >
-                      Reset Simulasi
-                    </button>
-                  </div>
-                </div>
-              )}
-
-              {}
-              {/* ROLE: DRIVER VIEW */}
-              {activeRole === 'driver' && (
-                <div className="bg-slate-800 p-5 rounded-2xl border border-slate-700/60 space-y-4">
-                  <h4 className="font-extrabold text-sm text-[#F2C335]">🚛 Panel Driver & Tanda Tangan PoD (Proof of Delivery)</h4>
-                  <p className="text-xs text-slate-300">Setelah material semen/pasir diturunkan di lokasi proyek, gunakan panel ini untuk mengunci tanda tangan digital penerima.</p>
-
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                    {/* Kamera Simulasi */}
-                    <div className="bg-slate-900 border border-slate-800 rounded-xl p-4 flex flex-col items-center justify-center text-center relative overflow-hidden aspect-video">
-                      {podPhoto ? (
-                        <>
-                          <img src={podPhoto} alt="PoD Cargo" className="absolute inset-0 w-full h-full object-cover" />
-                          <button 
-                            onClick={() => setPodPhoto(null)} 
-                            className="absolute top-2 right-2 bg-rose-500 text-white rounded-md px-2 py-1 text-[10px] font-bold"
-                          >
-                            Hapus 🗑️
-                          </button>
-                        </>
-                      ) : (
-                        <div className="space-y-2">
-                          <span className="text-3xl">📷</span>
-                          <p className="text-xs font-bold text-slate-300">Ambil Foto Material Bongkar</p>
-                          <button
-                            onClick={() => setPodPhoto('https://images.unsplash.com/photo-1590069261209-f8e9b8642343?auto=format&fit=crop&w=600&q=80')}
-                            className="bg-slate-800 hover:bg-slate-700 text-white text-[10px] font-bold px-3 py-1.5 rounded-lg transition"
-                          >
-                            Ambil Gambar Simulasi
-                          </button>
-                        </div>
-                      )}
-                    </div>
-
-                    {/* TTD Canvas */}
-                    <div className="bg-slate-900 border border-slate-800 rounded-xl p-3 flex flex-col justify-between aspect-video">
-                      <p className="text-[10px] text-slate-400 font-bold uppercase">Tanda Tangan Penerima di Layar HP:</p>
-                      
-                      <div className="bg-white rounded-lg h-24 relative overflow-hidden my-2">
-                        <canvas
-                          ref={canvasRef}
-                          onMouseDown={startDrawing}
-                          onMouseMove={draw}
-                          onMouseUp={() => setIsDrawing(false)}
-                          onTouchStart={startDrawing}
-                          onTouchMove={draw}
-                          onTouchEnd={() => setIsDrawing(false)}
-                          className="w-full h-full cursor-crosshair block"
-                        />
-                        {signatureSaved && (
-                          <div className="absolute inset-0 bg-emerald-500/10 flex items-center justify-center">
-                            <span className="bg-emerald-600 text-white text-[9px] font-bold px-2 py-0.5 rounded-full">Kunci TTD OK</span>
-                          </div>
-                        )}
-                      </div>
-
-                      <div className="flex justify-between items-center text-[10px]">
-                        <button 
-                          onClick={() => {
-                            const canvas = canvasRef.current;
-                            if (canvas) {
-                              const ctx = canvas.getContext('2d');
-                              ctx.clearRect(0, 0, canvas.width, canvas.height);
-                              setSignatureSaved(false);
-                            }
-                          }}
-                          className="text-rose-400 hover:underline"
-                        >
-                          Hapus TTD
-                        </button>
-                        <button onClick={saveSignature} className="text-emerald-400 font-bold hover:underline">Kunci TTD</button>
-                      </div>
-                    </div>
-                  </div>
-
-                  <button
-                    onClick={() => handleCompleteDelivery(selectedShipmentId)}
-                    disabled={!podPhoto || !signatureSaved}
-                    className={`w-full py-3 rounded-xl font-bold text-xs transition flex items-center justify-center gap-1.5 ${
-                      podPhoto && signatureSaved 
-                        ? 'bg-emerald-600 hover:bg-emerald-700 text-white cursor-pointer' 
-                        : 'bg-slate-700 text-slate-500 cursor-not-allowed'
-                    }`}
-                  >
-                    <span>✔️</span> Konfirmasi & Selesaikan Tugas Pengiriman
-                  </button>
-                </div>
-              )}
-
-            </div>
-
-            {/* SISI KANAN: STATUS DATABASE MONITOR */}
-            <div className="lg:col-span-4 bg-slate-800 p-5 rounded-2xl border border-slate-700/60 flex flex-col justify-between">
-              <div>
-                <h4 className="font-extrabold text-xs text-slate-400 uppercase tracking-widest">Monitor Hub</h4>
-                <p className="text-xs text-slate-300 mt-2">Daftar muatan logistik aktif dalam sistem:</p>
-                
-                <div className="space-y-3 mt-4">
-                  {shipments.map(ship => (
-                    <div 
-                      key={ship.id}
-                      onClick={() => {
-                        setSelectedShipmentId(ship.id);
-                        setSearchTrackingId(ship.id);
-                        triggerToast(`Detail ${ship.id} terpilih.`);
-                      }}
-                      className={`p-3 rounded-xl border text-xs cursor-pointer transition ${
-                        selectedShipmentId === ship.id 
-                          ? 'bg-slate-900 border-[#F2C335]' 
-                          : 'bg-slate-900/40 border-slate-800 hover:border-slate-700'
-                      }`}
-                    >
-                      <div className="flex justify-between font-bold">
-                        <span>{ship.id}</span>
-                        <span className="text-[#F2C335]">{ship.status}</span>
-                      </div>
-                      <p className="text-[10px] text-slate-500 mt-1 truncate">{ship.item}</p>
-                      
-                      {/* Mini bar */}
-                      <div className="w-full bg-slate-800 h-1 rounded-full mt-2 overflow-hidden">
-                        <div className="bg-[#00805A] h-full" style={{ width: `${ship.progress}%` }}></div>
-                      </div>
-                    </div>
-                  ))}
-                </div>
-              </div>
-
-              <div className="border-t border-slate-700 pt-3 mt-4 text-[10px] text-slate-500">
-                <p>Status Driver: 🟢 Online (3 Armadas)</p>
-                <p className="mt-1">Sistem Escrow Terkunci: Aman</p>
-              </div>
-            </div>
-
-          </div>
-        </div>
-      </section>
-
-      {}
-      {/* =======================================================
-          FLOATING SIDEBAR MENU (RIGHT SIDE ACTION WIDGETS)
-          ======================================================= */}
-      <div className="fixed right-4 bottom-24 z-30 flex flex-col gap-2.5">
-        {[
-          { label: 'WA Chat 24H', icon: '💬', action: () => triggerToast('Menghubungi CS via WhatsApp (Simulasi)...') },
-          { label: 'Cari Tarif', icon: '📊', action: () => { setActiveTab('price'); triggerToast('Membuka Kalkulator Ongkir.'); } },
-          { label: 'Lokasi Depot', icon: '📍', action: () => { setActiveTab('outlet'); triggerToast('Membuka Peta Outlet.'); } },
-          { label: 'Kontraktor VIP', icon: '👑', action: () => setShowVipModal(true) }
-        ].map((widget, i) => (
-          <button
-            key={i}
-            onClick={widget.action}
-            title={widget.label}
-            className="w-12 h-12 rounded-full bg-white text-slate-800 hover:bg-[#00805A] hover:text-white transition-all duration-300 flex items-center justify-center text-lg shadow-xl border border-slate-100 group relative"
+      {/* TOAST NOTIFICATIONS */}
+      <div className="fixed top-6 right-6 z-[100] flex flex-col gap-3 max-w-sm w-full font-inter">
+        {toasts.map((toast) => (
+          <div
+            key={toast.id}
+            className={`p-4 rounded-xl shadow-lg border flex items-center gap-3 transition-all transform translate-y-0 animate-fade-in ${
+              toast.type === 'success' 
+                ? 'bg-white border-emerald-100 text-slate-800' 
+                : toast.type === 'warning'
+                ? 'bg-white border-rose-100 text-slate-800'
+                : 'bg-white border-amber-100 text-slate-800'
+            }`}
           >
-            <span>{widget.icon}</span>
-            {/* Tooltip Label */}
-            <span className="absolute right-14 bg-slate-900 text-white text-[10px] font-bold px-2.5 py-1.5 rounded-lg opacity-0 group-hover:opacity-100 transition duration-300 pointer-events-none whitespace-nowrap shadow-md">
-              {widget.label}
-            </span>
-          </button>
+            {toast.type === 'success' && (
+              <span className="w-8 h-8 rounded-full bg-[#43A047]/10 flex items-center justify-center text-[#43A047] shrink-0 font-bold">✓</span>
+            )}
+            {toast.type === 'warning' && (
+              <span className="w-8 h-8 rounded-full bg-rose-50 flex items-center justify-center text-rose-500 shrink-0 font-bold">✕</span>
+            )}
+            {toast.type === 'info' && (
+              <span className="w-8 h-8 rounded-full bg-[#1E88E5]/10 flex items-center justify-center text-[#1E88E5] shrink-0 font-bold">!</span>
+            )}
+            <div className="text-xs font-semibold">{toast.message}</div>
+          </div>
         ))}
       </div>
 
-      {}
       {/* =======================================================
-          MODAL REGISTRASI VIP CLIENT / MITRA KONTRAKTOR
+          SIDEBAR NAVIGASI (LEFT) - FIXED HIGH FIDELITY
           ======================================================= */}
-      {showVipModal && (
-        <div className="fixed inset-0 bg-slate-900/60 backdrop-blur-sm z-50 flex items-center justify-center p-4">
-          <div className="bg-white rounded-[24px] w-full max-w-md p-6 shadow-2xl border border-slate-100 transform transition-all">
-            <div className="flex justify-between items-center mb-4">
-              <h3 className="text-base font-extrabold text-slate-900">👑 Pengajuan VIP Client (Kontraktor B2B)</h3>
+      <aside className={`w-64 bg-[#212121] text-white flex flex-col justify-between shrink-0 fixed h-full z-40 transition-transform duration-300 lg:translate-x-0 lg:static ${
+        mobileMenuOpen ? 'translate-x-0' : '-translate-x-full'
+      }`}>
+        <div className="flex flex-col">
+          {/* Logo & Brand Header */}
+          <div className="p-6 border-b border-neutral-800 flex justify-between items-center">
+            <div className="flex items-center gap-3">
+              <div className="w-9 h-9 rounded-xl bg-[#1E88E5] flex items-center justify-center font-poppins font-bold text-lg text-white shadow-md shadow-[#1E88E5]/20">
+                A
+              </div>
+              <div>
+                <h1 className="font-poppins font-bold text-base tracking-tight leading-none text-white">ApexDash</h1>
+                <p className="text-[10px] text-neutral-500 font-inter font-medium mt-1">CORE MANAGEMENT</p>
+              </div>
+            </div>
+            {/* Mobile Close Button */}
+            <button className="lg:hidden text-neutral-400 hover:text-white" onClick={() => setMobileMenuOpen(false)}>
+              ✕
+            </button>
+          </div>
+
+          {/* Navigation Links */}
+          <nav className="p-4 space-y-1 font-inter text-sm">
+            {[
+              { id: 'dashboard', label: 'Dashboard', icon: (active) => (
+                <svg className={`w-5 h-5 ${active ? 'text-[#1E88E5]' : 'text-neutral-400'}`} fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2">
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M4 6a2 2 0 012-2h2a2 2 0 012 2v4a2 2 0 01-2 2H6a2 2 0 01-2-2V6zM14 6a2 2 0 012-2h2a2 2 0 012 2v4a2 2 0 01-2 2h-2a2 2 0 01-2-2V6zM4 16a2 2 0 012-2h2a2 2 0 012 2v4a2 2 0 01-2 2H6a2 2 0 01-2-2v-4zM14 16a2 2 0 012-2h2a2 2 0 012 2v4a2 2 0 01-2 2h-2a2 2 0 01-2-2v-4z" />
+                </svg>
+              )},
+              { id: 'members', label: 'Members', count: members.length, icon: (active) => (
+                <svg className={`w-5 h-5 ${active ? 'text-[#1E88E5]' : 'text-neutral-400'}`} fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2">
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M12 4.354a4 4 0 110 5.292M15 21H3v-1a6 6 0 0112 0v1zm0 0h6v-1a6 6 0 00-9-5.197M13 7a4 4 0 11-8 0 4 4 0 018 0z" />
+                </svg>
+              )},
+              { id: 'blog', label: 'Blog Posts', count: blogs.length, icon: (active) => (
+                <svg className={`w-5 h-5 ${active ? 'text-[#1E88E5]' : 'text-neutral-400'}`} fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2">
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M19 20H5a2 2 0 01-2-2V6a2 2 0 012-2h10a2 2 0 012 2v1m2 13a2 2 0 01-2-2V7m2 13a2 2 0 002-2V9a2 2 0 00-2-2h-2m-4-3H9M7 16h6M7 8h6m-6 4h3" />
+                </svg>
+              )},
+              { id: 'redeem', label: 'Redeem Requests', count: stats.pendingRedeems, isBadge: true, icon: (active) => (
+                <svg className={`w-5 h-5 ${active ? 'text-[#1E88E5]' : 'text-neutral-400'}`} fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2">
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                </svg>
+              )},
+              { id: 'settings', label: 'Settings', icon: (active) => (
+                <svg className={`w-5 h-5 ${active ? 'text-[#1E88E5]' : 'text-neutral-400'}`} fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2">
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z" />
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+                </svg>
+              )}
+            ].map((item) => {
+              const active = activeTab === item.id;
+              return (
+                <button
+                  key={item.id}
+                  onClick={() => {
+                    setActiveTab(item.id);
+                    setSearchQuery('');
+                    setMobileMenuOpen(false);
+                    addToast(`Beralih ke halaman ${item.label}`, 'info');
+                  }}
+                  className={`w-full flex items-center justify-between px-4 py-3 rounded-xl transition duration-200 ${
+                    active 
+                      ? 'bg-neutral-800 text-white font-semibold border-l-4 border-[#1E88E5]' 
+                      : 'text-neutral-400 hover:bg-neutral-800/50 hover:text-white'
+                  }`}
+                >
+                  <div className="flex items-center gap-3">
+                    {item.icon(active)}
+                    <span>{item.label}</span>
+                  </div>
+                  {item.count !== undefined && (
+                    <span className={`text-[10px] px-2 py-0.5 rounded-full font-bold ${
+                      item.isBadge && item.count > 0 
+                        ? 'bg-[#FDD835] text-[#212121]' 
+                        : 'bg-neutral-800 text-neutral-400'
+                    }`}>
+                      {item.count}
+                    </span>
+                  )}
+                </button>
+              );
+            })}
+          </nav>
+        </div>
+
+        {/* Footer Profile Sidebar info */}
+        <div className="p-4 border-t border-neutral-800 text-xs text-neutral-500 font-inter">
+          <p>Super Admin Console</p>
+          <p className="mt-1">Version 4.2.0-stable</p>
+        </div>
+      </aside>
+
+      {/* MOBILE MENU OVERLAY */}
+      {mobileMenuOpen && (
+        <div 
+          className="fixed inset-0 bg-black/40 z-30 lg:hidden"
+          onClick={() => setMobileMenuOpen(false)}
+        />
+      )}
+
+      {/* =======================================================
+          MAIN WORKSPACE LAYOUT (HEADER + DYNAMIC VIEWS)
+          ======================================================= */}
+      <div className="flex-1 flex flex-col min-w-0 max-h-screen overflow-y-auto font-inter">
+        
+        {/* HEADER (TOP BAR: SEARCH, NOTIFICATIONS, PROFILE) */}
+        <header className="bg-white border-b border-neutral-100 sticky top-0 z-30 px-6 py-4 flex justify-between items-center shadow-sm">
+          <div className="flex items-center gap-4">
+            {/* Mobile Hamburger Toggle */}
+            <button 
+              className="lg:hidden p-2 rounded-xl hover:bg-neutral-100 text-[#212121]"
+              onClick={() => setMobileMenuOpen(true)}
+            >
+              <svg className="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2">
+                <path strokeLinecap="round" strokeLinejoin="round" d="M4 6h16M4 12h16M4 18h16" />
+              </svg>
+            </button>
+            
+            {/* Page Name Context */}
+            <div>
+              <h2 className="font-poppins font-bold text-lg text-[#212121] uppercase tracking-wide leading-tight">
+                {activeTab === 'dashboard' ? 'Overview' : activeTab}
+              </h2>
+              <p className="text-[11px] text-neutral-400 font-medium">Sistem Kendali Utama Terintegrasi</p>
+            </div>
+          </div>
+
+          {/* Search bar & Admin profile row */}
+          <div className="flex items-center gap-6">
+            <div className="relative hidden md:block w-64">
+              <span className="absolute left-3.5 top-1/2 transform -translate-y-1/2 text-neutral-400">
+                <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2">
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
+                </svg>
+              </span>
+              <input
+                type="text"
+                placeholder="Cari data global..."
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+                className="w-full text-xs font-medium border border-neutral-200 rounded-xl pl-10 pr-4 py-2.5 bg-neutral-50 focus:outline-none focus:ring-2 focus:ring-[#1E88E5] focus:bg-white transition-all"
+              />
+            </div>
+
+            {/* Notification bell and profile mock */}
+            <div className="flex items-center gap-4">
               <button 
-                onClick={() => setShowVipModal(false)}
-                className="w-8 h-8 rounded-full bg-slate-100 flex items-center justify-center text-slate-500 font-bold"
+                onClick={() => addToast('Pusat pemberitahuan kosong.', 'info')}
+                className="w-10 h-10 rounded-xl bg-neutral-50 hover:bg-neutral-100 transition flex items-center justify-center text-neutral-600 relative"
+              >
+                <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2">
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M15 17h5l-1.405-1.405A2.032 2.032 0 0118 14.158V11a6.002 6.002 0 00-4-5.659V5a2 2 0 10-4 0v.341C7.67 6.165 6 8.388 6 11v3.159c0 .538-.214 1.055-.595 1.436L4 17h5m6 0v1a3 3 0 11-6 0v-1m6 0H9" />
+                </svg>
+                {stats.pendingRedeems > 0 && (
+                  <span className="absolute top-2 right-2.5 w-2 h-2 rounded-full bg-[#1E88E5] ring-2 ring-white"></span>
+                )}
+              </button>
+
+              <span className="w-px h-8 bg-neutral-200"></span>
+
+              <div className="flex items-center gap-2.5">
+                <img 
+                  src="https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&w=150&q=80" 
+                  alt="Admin Profile" 
+                  className="w-9 h-9 rounded-xl object-cover ring-2 ring-neutral-100"
+                />
+                <div className="hidden xl:block text-left">
+                  <h4 className="text-xs font-bold text-[#212121] leading-none">D. Stwaret</h4>
+                  <p className="text-[10px] text-neutral-400 font-semibold mt-1">Super Administrator</p>
+                </div>
+              </div>
+            </div>
+          </div>
+        </header>
+
+        {/* CONTAINER CONTENT */}
+        <div className="p-6 max-w-7xl w-full mx-auto space-y-8 flex-1">
+          
+          {/* SEARCH FOR MOBILE DEVICES */}
+          <div className="md:hidden">
+            <div className="relative">
+              <span className="absolute left-3.5 top-1/2 transform -translate-y-1/2 text-neutral-400">🔍</span>
+              <input
+                type="text"
+                placeholder="Cari data global..."
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+                className="w-full text-xs font-medium border border-neutral-200 rounded-xl pl-10 pr-4 py-3 bg-white focus:outline-none focus:ring-2 focus:ring-[#1E88E5]"
+              />
+            </div>
+          </div>
+
+          {/* =======================================================
+              STATISTIC CARDS (GRID 3-4 COLUMNS)
+              ======================================================= */}
+          <section className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+            
+            {/* CARD 1: Total Members */}
+            <div className="bg-white rounded-[12px] p-5 shadow-[0_4px_8px_rgba(0,0,0,0.03)] border border-neutral-100 flex items-center justify-between">
+              <div>
+                <div className="flex items-center gap-2 text-neutral-500">
+                  <svg className="w-4 h-4 text-[#1E88E5]" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2">
+                    <path strokeLinecap="round" strokeLinejoin="round" d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z" />
+                  </svg>
+                  <span className="text-xs font-bold uppercase tracking-wider text-neutral-400">Total Members</span>
+                </div>
+                <p className="text-2xl font-bold text-[#212121] mt-2 font-poppins">{stats.totalMemb}</p>
+                <p className="text-[10px] text-[#43A047] font-semibold mt-1">🟢 {stats.activeMemb} Active Accounts</p>
+              </div>
+              <div className="w-12 h-12 rounded-2xl bg-[#1E88E5]/10 flex items-center justify-center text-[#1E88E5]">
+                👥
+              </div>
+            </div>
+
+            {/* CARD 2: Active Blogs */}
+            <div className="bg-white rounded-[12px] p-5 shadow-[0_4px_8px_rgba(0,0,0,0.03)] border border-neutral-100 flex items-center justify-between">
+              <div>
+                <div className="flex items-center gap-2 text-neutral-500">
+                  <svg className="w-4 h-4 text-[#43A047]" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2">
+                    <path strokeLinecap="round" strokeLinejoin="round" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
+                  </svg>
+                  <span className="text-xs font-bold uppercase tracking-wider text-neutral-400">Blog Posts</span>
+                </div>
+                <p className="text-2xl font-bold text-[#212121] mt-2 font-poppins">{stats.totalBlogs}</p>
+                <p className="text-[10px] text-neutral-400 font-semibold mt-1">Published Articles</p>
+              </div>
+              <div className="w-12 h-12 rounded-2xl bg-[#43A047]/10 flex items-center justify-center text-[#43A047]">
+                ✍️
+              </div>
+            </div>
+
+            {/* CARD 3: Redeem Requests */}
+            <div className="bg-white rounded-[12px] p-5 shadow-[0_4px_8px_rgba(0,0,0,0.03)] border border-neutral-100 flex items-center justify-between">
+              <div>
+                <div className="flex items-center gap-2 text-neutral-500">
+                  <svg className="w-4 h-4 text-amber-500" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2">
+                    <path strokeLinecap="round" strokeLinejoin="round" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
+                  </svg>
+                  <span className="text-xs font-bold uppercase tracking-wider text-neutral-400">Pending Redeems</span>
+                </div>
+                <p className="text-2xl font-bold text-[#212121] mt-2 font-poppins">{stats.pendingRedeems}</p>
+                <p className="text-[10px] text-amber-600 font-semibold mt-1">🟡 Awaiting Moderator Review</p>
+              </div>
+              <div className="w-12 h-12 rounded-2xl bg-[#FDD835]/10 flex items-center justify-center text-amber-600">
+                ⌛
+              </div>
+            </div>
+
+            {/* CARD 4: Conversions / Volume */}
+            <div className="bg-white rounded-[12px] p-5 shadow-[0_4px_8px_rgba(0,0,0,0.03)] border border-neutral-100 flex items-center justify-between">
+              <div>
+                <div className="flex items-center gap-2 text-neutral-500">
+                  <svg className="w-4 h-4 text-[#1E88E5]" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2">
+                    <path strokeLinecap="round" strokeLinejoin="round" d="M9 12l2 2 4-4M7.835 4.697a3.42 3.42 0 001.946-.806 3.42 3.42 0 014.438 0 3.42 3.42 0 001.946.806 3.42 3.42 0 013.138 3.138 3.42 3.42 0 00.806 1.946 3.42 3.42 0 010 4.438 3.42 3.42 0 00-.806 1.946 3.42 3.42 0 01-3.138 3.138 3.42 3.42 0 00-1.946.806 3.42 3.42 0 01-4.438 0 3.42 3.42 0 00-1.946-.806 3.42 3.42 0 01-3.138-3.138 3.42 3.42 0 00-.806-1.946 3.42 3.42 0 010-4.438 3.42 3.42 0 00.806-1.946 3.42 3.42 0 013.138-3.138z" />
+                  </svg>
+                  <span className="text-xs font-bold uppercase tracking-wider text-neutral-400">Claim Volume</span>
+                </div>
+                <p className="text-2xl font-bold text-[#212121] mt-2 font-poppins">{stats.approvedPointsValue.toLocaleString('id-ID')} Pts</p>
+                <p className="text-[10px] text-emerald-600 font-semibold mt-1">🎉 {stats.approvedRedeemsCount} Approved Conversions</p>
+              </div>
+              <div className="w-12 h-12 rounded-2xl bg-emerald-50 flex items-center justify-center text-[#43A047]">
+                💎
+              </div>
+            </div>
+
+          </section>
+
+          {/* =======================================================
+              QUICK ACTIONS BAR (INTERACTIVE OPERATION BUTTONS)
+              ======================================================= */}
+          <section className="bg-white rounded-[12px] p-5 shadow-[0_4px_8px_rgba(0,0,0,0.03)] border border-neutral-100">
+            <h3 className="text-xs font-bold uppercase tracking-wider text-neutral-400 mb-3 flex items-center gap-1.5 font-poppins">
+              ⚡ Quick Actions Menu
+            </h3>
+            <div className="flex flex-wrap gap-3">
+              <button
+                onClick={() => handleOpenMemberModal()}
+                className="bg-[#1E88E5] hover:bg-[#1565C0] text-white text-xs font-bold px-4 py-2.5 rounded-[8px] shadow-[0_2px_4px_rgba(0,0,0,0.1)] transition flex items-center gap-2"
+              >
+                <span>➕</span> Add New Member
+              </button>
+              <button
+                onClick={() => setShowBlogModal(true)}
+                className="bg-[#FFFFFF] border border-[#1E88E5] text-[#1E88E5] hover:bg-[#E3F2FD] text-xs font-bold px-4 py-2.5 rounded-[8px] transition flex items-center gap-2"
+              >
+                <span>📝</span> Draft Blog Post
+              </button>
+              <button
+                onClick={() => {
+                  setActiveTab('redeem');
+                  addToast('Menampilkan seluruh permintaan penukaran.', 'info');
+                }}
+                className="bg-[#FFFFFF] border border-neutral-300 text-neutral-600 hover:bg-neutral-50 text-xs font-bold px-4 py-2.5 rounded-[8px] transition flex items-center gap-2"
+              >
+                <span>💸</span> Review Redeems ({stats.pendingRedeems})
+              </button>
+              <button
+                onClick={() => {
+                  setMembers(INITIAL_MEMBERS);
+                  setBlogs(INITIAL_BLOGS);
+                  setRedeems(INITIAL_REDEEMS);
+                  addToast('Database simulator disetel ulang ke kondisi awal.', 'info');
+                }}
+                className="ml-auto bg-rose-50 text-rose-600 hover:bg-rose-100 text-xs font-bold px-4 py-2.5 rounded-[8px] transition flex items-center gap-2"
+              >
+                <span>🔄</span> Reset Mock Database
+              </button>
+            </div>
+          </section>
+
+          {/* =======================================================
+              DYNAMIC MAIN CONTENT CONTAINER
+              ======================================================= */}
+          <main className="transition-all duration-300">
+            
+            {/* VIEW: OVERVIEW / DASHBOARD */}
+            {activeTab === 'dashboard' && (
+              <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
+                
+                {/* Visualisasi Data Chart Interaktif (Desktop: 7/12) */}
+                <div className="lg:col-span-7 bg-white rounded-[12px] p-5 border border-neutral-100 shadow-[0_4px_8px_rgba(0,0,0,0.03)] flex flex-col justify-between">
+                  <div className="flex justify-between items-center mb-6">
+                    <div className="flex items-center gap-2.5">
+                      <span className="text-xl">📈</span>
+                      <div>
+                        <h4 className="text-sm font-bold font-poppins text-[#212121]">Statistik Keaktifan Platform</h4>
+                        <p className="text-[10px] text-neutral-400">Total volume transaksi poin penukaran</p>
+                      </div>
+                    </div>
+
+                    <div className="flex bg-neutral-100 p-1 rounded-xl text-[10px] font-bold">
+                      {['daily', 'weekly', 'monthly'].map((range) => (
+                        <button
+                          key={range}
+                          onClick={() => {
+                            setChartRange(range);
+                            addToast(`Grafik diperbarui ke rentang ${range}`);
+                          }}
+                          className={`px-3 py-1.5 rounded-lg uppercase transition ${
+                            chartRange === range 
+                              ? 'bg-[#1E88E5] text-white' 
+                              : 'text-neutral-500 hover:text-[#212121]'
+                          }`}
+                        >
+                          {range}
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+
+                  {/* Render Chart SVG Dinamis */}
+                  <div className="w-full h-48 bg-neutral-50 rounded-2xl relative p-4 flex flex-col justify-between overflow-hidden">
+                    <svg className="w-full h-32 absolute bottom-4 left-0 right-0 px-2" viewBox="0 0 700 120" preserveAspectRatio="none">
+                      <defs>
+                        <linearGradient id="chartGradient" x1="0" y1="0" x2="0" y2="1">
+                          <stop offset="0%" stopColor="#1E88E5" stopOpacity="0.3" />
+                          <stop offset="100%" stopColor="#1E88E5" stopOpacity="0.0" />
+                        </linearGradient>
+                      </defs>
+                      
+                      {/* Area Fill */}
+                      <path
+                        d={`M 10 120 
+                            L 10 ${100 - CHARTS_DATA[chartRange][0] / 8} 
+                            L 110 ${100 - CHARTS_DATA[chartRange][1] / 8} 
+                            L 220 ${100 - CHARTS_DATA[chartRange][2] / 8} 
+                            L 330 ${100 - CHARTS_DATA[chartRange][3] / 8} 
+                            L 440 ${100 - CHARTS_DATA[chartRange][4] / 8} 
+                            L 550 ${100 - CHARTS_DATA[chartRange][5] / 8} 
+                            L 680 ${100 - CHARTS_DATA[chartRange][6] / 8} 
+                            L 680 120 Z`}
+                        fill="url(#chartGradient)"
+                        className="transition-all duration-500"
+                      />
+
+                      {/* Stroke Line */}
+                      <path
+                        d={`M 10 ${100 - CHARTS_DATA[chartRange][0] / 8} 
+                            L 110 ${100 - CHARTS_DATA[chartRange][1] / 8} 
+                            L 220 ${100 - CHARTS_DATA[chartRange][2] / 8} 
+                            L 330 ${100 - CHARTS_DATA[chartRange][3] / 8} 
+                            L 440 ${100 - CHARTS_DATA[chartRange][4] / 8} 
+                            L 550 ${100 - CHARTS_DATA[chartRange][5] / 8} 
+                            L 680 ${100 - CHARTS_DATA[chartRange][6] / 8}`}
+                        fill="none"
+                        stroke="#1E88E5"
+                        strokeWidth="3.5"
+                        strokeLinecap="round"
+                        strokeLinejoin="round"
+                        className="transition-all duration-500"
+                      />
+
+                      {/* Interactive Dots */}
+                      {CHARTS_DATA[chartRange].map((val, index) => {
+                        const x = index === 6 ? 680 : index * 110 + 10;
+                        const y = 100 - val / 8;
+                        return (
+                          <circle
+                            key={index}
+                            cx={x}
+                            cy={y}
+                            r="5"
+                            className="fill-[#FFFFFF] stroke-[#1E88E5] stroke-[3] cursor-pointer hover:r-[7] transition-all"
+                            onClick={() => addToast(`Nilai pada titik ini: ${val}`, 'info')}
+                          />
+                        );
+                      })}
+                    </svg>
+
+                    <div className="flex justify-between text-[10px] text-neutral-400 z-10">
+                      <span>Rentang Waktu Awal</span>
+                      <span>Rentang Waktu Akhir</span>
+                    </div>
+                  </div>
+                </div>
+
+                {/* Aktivitas Penukaran Terbaru (Desktop: 5/12) */}
+                <div className="lg:col-span-5 bg-white rounded-[12px] p-5 border border-neutral-100 shadow-[0_4px_8px_rgba(0,0,0,0.03)] flex flex-col justify-between">
+                  <div>
+                    <h4 className="text-sm font-bold font-poppins text-[#212121] mb-4 flex items-center gap-2">
+                      <span>💸</span> Penukaran Pending Terkini
+                    </h4>
+                    
+                    <div className="space-y-3">
+                      {redeems.filter(r => r.status === 'Pending').slice(0, 3).map((item) => (
+                        <div key={item.id} className="p-3 bg-neutral-50 rounded-xl border border-neutral-100 flex items-center justify-between text-xs">
+                          <div>
+                            <p className="font-bold text-[#212121]">{item.memberName}</p>
+                            <p className="text-[10px] text-neutral-400 mt-1">{item.prize}</p>
+                          </div>
+                          <div className="text-right">
+                            <span className="font-bold text-[#1E88E5]">{item.points} Pts</span>
+                            <button 
+                              onClick={() => {
+                                setSelectedRedeem(item);
+                                setShowRedeemModal(true);
+                              }}
+                              className="block text-[10px] text-[#43A047] font-bold mt-1.5 hover:underline"
+                            >
+                              Tinjau Klaim ➔
+                            </button>
+                          </div>
+                        </div>
+                      ))}
+
+                      {redeems.filter(r => r.status === 'Pending').length === 0 && (
+                        <div className="p-6 text-center text-xs text-neutral-400 border border-dashed border-neutral-200 rounded-xl">
+                          Tidak ada klaim pending baru saat ini.
+                        </div>
+                      )}
+                    </div>
+                  </div>
+
+                  <button
+                    onClick={() => setActiveTab('redeem')}
+                    className="w-full text-center text-xs font-bold text-[#1E88E5] hover:underline pt-3 mt-4 border-t border-neutral-100"
+                  >
+                    Buka Semua Penukaran ➔
+                  </button>
+                </div>
+
+              </div>
+            )}
+
+            {/* VIEW: MEMBERS MANAGEMENT */}
+            {activeTab === 'members' && (
+              <div className="bg-white rounded-[12px] p-5 border border-neutral-100 shadow-[0_4px_8px_rgba(0,0,0,0.03)] space-y-4">
+                <div className="flex flex-col sm:flex-row justify-between sm:items-center gap-3 border-b border-neutral-100 pb-4">
+                  <div>
+                    <h3 className="font-poppins font-bold text-base text-[#212121]">Daftar Keanggotaan Terdaftar</h3>
+                    <p className="text-xs text-neutral-400 mt-0.5">Kelola data, peran, dan status akun pengguna</p>
+                  </div>
+                  <button
+                    onClick={() => handleOpenMemberModal()}
+                    className="bg-[#1E88E5] hover:bg-[#1565C0] text-white text-xs font-bold px-4 py-2.5 rounded-[8px] transition"
+                  >
+                    ➕ Tambah Anggota
+                  </button>
+                </div>
+
+                {/* Tables of members */}
+                <div className="overflow-x-auto">
+                  <table className="w-full text-xs text-left border-collapse">
+                    <thead>
+                      <tr className="bg-neutral-50 text-neutral-500 font-bold border-b border-neutral-100">
+                        <th className="p-3.5">ID Anggota</th>
+                        <th className="p-3.5">Nama</th>
+                        <th className="p-3.5">Email</th>
+                        <th className="p-3.5">Peran</th>
+                        <th className="p-3.5">Status</th>
+                        <th className="p-3.5">Tanggal Bergabung</th>
+                        <th className="p-3.5 text-right">Aksi</th>
+                      </tr>
+                    </thead>
+                    <tbody className="divide-y divide-neutral-100">
+                      {filteredMembers.map((member) => (
+                        <tr key={member.id} className="hover:bg-neutral-50/50 transition">
+                          <td className="p-3.5 font-bold text-[#1E88E5]">{member.id}</td>
+                          <td className="p-3.5 font-semibold text-[#212121]">{member.name}</td>
+                          <td className="p-3.5 text-neutral-500">{member.email}</td>
+                          <td className="p-3.5 font-medium">{member.role}</td>
+                          <td className="p-3.5">
+                            <span className={`px-2.5 py-1 rounded-full text-[9px] font-bold uppercase tracking-wider ${
+                              member.status === 'Active' 
+                                ? 'bg-emerald-50 text-[#43A047]' 
+                                : 'bg-rose-50 text-rose-600'
+                            }`}>
+                              {member.status}
+                            </span>
+                          </td>
+                          <td className="p-3.5 text-neutral-400">{member.joinedDate}</td>
+                          <td className="p-3.5 text-right space-x-1.5 whitespace-nowrap">
+                            <button 
+                              onClick={() => handleOpenMemberModal(member)}
+                              className="text-[#1E88E5] font-bold hover:underline"
+                            >
+                              Edit
+                            </button>
+                            <span className="text-neutral-200">|</span>
+                            <button 
+                              onClick={() => handleDeleteMember(member.id, member.name)}
+                              className="text-rose-500 font-bold hover:underline"
+                            >
+                              Hapus
+                            </button>
+                          </td>
+                        </tr>
+                      ))}
+
+                      {filteredMembers.length === 0 && (
+                        <tr>
+                          <td colSpan="7" className="text-center p-8 text-neutral-400">
+                            Tidak ada data anggota yang cocok dengan kata kunci pencarian.
+                          </td>
+                        </tr>
+                      )}
+                    </tbody>
+                  </table>
+                </div>
+              </div>
+            )}
+
+            {/* VIEW: BLOG POSTS */}
+            {activeTab === 'blog' && (
+              <div className="space-y-6">
+                <div className="bg-white rounded-[12px] p-5 border border-neutral-100 shadow-[0_4px_8px_rgba(0,0,0,0.03)] flex justify-between items-center">
+                  <div>
+                    <h3 className="font-poppins font-bold text-base text-[#212121]">Portal Artikel & Draf Blog</h3>
+                    <p className="text-xs text-neutral-400 mt-0.5">Atur materi edukasi dan informasi yang tersaji di aplikasi klien</p>
+                  </div>
+                  <button
+                    onClick={() => setShowBlogModal(true)}
+                    className="bg-[#1E88E5] hover:bg-[#1565C0] text-white text-xs font-bold px-4 py-2.5 rounded-[8px] transition"
+                  >
+                    📝 Tulis Artikel Baru
+                  </button>
+                </div>
+
+                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                  {filteredBlogs.map((blog) => (
+                    <article key={blog.id} className="bg-white rounded-[12px] border border-neutral-100 shadow-[0_4px_8px_rgba(0,0,0,0.03)] flex flex-col justify-between overflow-hidden">
+                      <div className="p-5 space-y-3">
+                        <div className="flex justify-between items-center">
+                          <span className="text-[10px] uppercase font-bold text-[#1E88E5] bg-[#1E88E5]/10 px-2.5 py-1 rounded-full">
+                            {blog.category}
+                          </span>
+                          <span className={`text-[9px] font-bold px-2 py-0.5 rounded-md uppercase ${
+                            blog.status === 'Published' 
+                              ? 'bg-emerald-50 text-[#43A047]' 
+                              : 'bg-amber-50 text-amber-600'
+                          }`}>
+                            {blog.status}
+                          </span>
+                        </div>
+
+                        <h4 className="font-poppins font-bold text-sm text-[#212121] leading-snug">
+                          {blog.title}
+                        </h4>
+
+                        {/* Open Sans applied for readable content body */}
+                        <p className="text-xs text-neutral-500 font-opensans leading-relaxed line-clamp-3">
+                          {blog.content}
+                        </p>
+                      </div>
+
+                      <div className="p-5 bg-neutral-50 border-t border-neutral-100 flex justify-between items-center text-[11px] text-neutral-400 font-inter">
+                        <div>
+                          <p className="font-semibold text-neutral-600">Oleh: {blog.author}</p>
+                          <p className="text-[9px] mt-0.5">{blog.date}</p>
+                        </div>
+                        <button 
+                          onClick={() => handleDeleteBlog(blog.id)}
+                          className="text-rose-500 font-bold hover:underline"
+                        >
+                          Hapus Artikel
+                        </button>
+                      </div>
+                    </article>
+                  ))}
+
+                  {filteredBlogs.length === 0 && (
+                    <div className="col-span-full text-center p-12 bg-white rounded-2xl border border-dashed border-neutral-200 text-neutral-400">
+                      Belum ada artikel blog yang terdaftar atau hasil pencarian nihil.
+                    </div>
+                  )}
+                </div>
+              </div>
+            )}
+
+            {/* VIEW: REDEEM REQUESTS */}
+            {activeTab === 'redeem' && (
+              <div className="bg-white rounded-[12px] p-5 border border-neutral-100 shadow-[0_4px_8px_rgba(0,0,0,0.03)] space-y-4">
+                <div>
+                  <h3 className="font-poppins font-bold text-base text-[#212121]">Verifikasi Klaim & Penukaran</h3>
+                  <p className="text-xs text-neutral-400 mt-0.5">Tinjau, setujui, atau tolak klaim pencairan hadiah poin anggota</p>
+                </div>
+
+                <div className="overflow-x-auto">
+                  <table className="w-full text-xs text-left border-collapse">
+                    <thead>
+                      <tr className="bg-neutral-50 text-neutral-500 font-bold border-b border-neutral-100">
+                        <th className="p-3.5">ID Transaksi</th>
+                        <th className="p-3.5">Nama Anggota</th>
+                        <th className="p-3.5">Poin Ditukarkan</th>
+                        <th className="p-3.5">Hadiah / Reward</th>
+                        <th className="p-3.5">Tanggal Pengajuan</th>
+                        <th className="p-3.5">Status</th>
+                        <th className="p-3.5 text-right">Aksi Moderasi</th>
+                      </tr>
+                    </thead>
+                    <tbody className="divide-y divide-neutral-100">
+                      {filteredRedeems.map((redeem) => (
+                        <tr key={redeem.id} className="hover:bg-neutral-50/50 transition">
+                          <td className="p-3.5 font-bold text-neutral-600">{redeem.id}</td>
+                          <td className="p-3.5 font-semibold text-[#212121]">{redeem.memberName}</td>
+                          <td className="p-3.5 font-bold text-[#1E88E5]">{redeem.points.toLocaleString('id-ID')} Pts</td>
+                          <td className="p-3.5 font-medium">{redeem.prize}</td>
+                          <td className="p-3.5 text-neutral-400">{redeem.date}</td>
+                          <td className="p-3.5">
+                            <span className={`px-2.5 py-1 rounded-full text-[9px] font-bold uppercase tracking-wider ${
+                              redeem.status === 'Approved' 
+                                ? 'bg-emerald-50 text-[#43A047]' 
+                                : redeem.status === 'Pending'
+                                ? 'bg-amber-50 text-amber-600'
+                                : 'bg-rose-50 text-rose-600'
+                            }`}>
+                              {redeem.status}
+                            </span>
+                          </td>
+                          <td className="p-3.5 text-right space-x-2">
+                            {redeem.status === 'Pending' ? (
+                              <>
+                                <button
+                                  onClick={() => handleProcessRedeem(redeem.id, 'Approved')}
+                                  className="bg-[#43A047] text-white font-bold px-2 py-1.5 rounded-[6px] hover:bg-emerald-700 transition text-[10px]"
+                                >
+                                  Approve
+                                </button>
+                                <button
+                                  onClick={() => handleProcessRedeem(redeem.id, 'Rejected')}
+                                  className="bg-rose-100 text-rose-600 font-bold px-2 py-1.5 rounded-[6px] hover:bg-rose-200 transition text-[10px]"
+                                >
+                                  Reject
+                                </button>
+                              </>
+                            ) : (
+                              <span className="text-neutral-400 italic text-[10px]">Telah Dimoderasi</span>
+                            )}
+                          </td>
+                        </tr>
+                      ))}
+
+                      {filteredRedeems.length === 0 && (
+                        <tr>
+                          <td colSpan="7" className="text-center p-8 text-neutral-400">
+                            Tidak ada pengajuan klaim penukaran poin saat ini.
+                          </td>
+                        </tr>
+                      )}
+                    </tbody>
+                  </table>
+                </div>
+              </div>
+            )}
+
+            {/* VIEW: SETTINGS */}
+            {activeTab === 'settings' && (
+              <div className="bg-white rounded-[12px] p-5 border border-neutral-100 shadow-[0_4px_8px_rgba(0,0,0,0.03)] space-y-6">
+                <div>
+                  <h3 className="font-poppins font-bold text-base text-[#212121]">Konfigurasi Sistem Utama</h3>
+                  <p className="text-xs text-neutral-400 mt-0.5">Sesuaikan preferensi operasional dashboard manajemen</p>
+                </div>
+
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-6 text-xs font-inter">
+                  <div className="space-y-3">
+                    <h4 className="font-bold text-neutral-600 uppercase tracking-wider text-[10px]">Opsi Tema & Aksesibilitas</h4>
+                    <label className="flex items-center gap-3 bg-neutral-50 p-3 rounded-xl border border-neutral-100 cursor-pointer">
+                      <input type="checkbox" defaultChecked className="rounded text-[#1E88E5] focus:ring-[#1E88E5] w-4 h-4" />
+                      <div>
+                        <p className="font-bold text-[#212121]">Gunakan Pola Warna Solid</p>
+                        <p className="text-[10px] text-neutral-400 mt-0.5">Mempertahankan palet biru (#1E88E5) agar kontras tinggi</p>
+                      </div>
+                    </label>
+
+                    <label className="flex items-center gap-3 bg-neutral-50 p-3 rounded-xl border border-neutral-100 cursor-pointer">
+                      <input type="checkbox" defaultChecked className="rounded text-[#1E88E5] focus:ring-[#1E88E5] w-4 h-4" />
+                      <div>
+                        <p className="font-bold text-[#212121]">Tingkatkan Kepadatan Tabel</p>
+                        <p className="text-[10px] text-neutral-400 mt-0.5">Mengurangi jarak padding sel untuk memuat baris lebih banyak</p>
+                      </div>
+                    </label>
+                  </div>
+
+                  <div className="space-y-3">
+                    <h4 className="font-bold text-neutral-600 uppercase tracking-wider text-[10px]">Sistem Integrasi Platform</h4>
+                    <div className="p-4 bg-[#1E88E5]/5 border border-[#1E88E5]/10 rounded-xl space-y-2">
+                      <p className="font-semibold text-neutral-700">🔐 Status Kunci API (Gateway):</p>
+                      <p className="font-mono text-[10px] text-neutral-500">APEX_KEY_LIVE_9982x11283hds09</p>
+                      <button 
+                        onClick={() => addToast('API Key sukses dibuat ulang.', 'info')}
+                        className="bg-white hover:bg-[#E3F2FD] border border-[#1E88E5] text-[#1E88E5] text-[10px] font-bold px-3 py-1.5 rounded-lg transition"
+                      >
+                        Regenerate API Key
+                      </button>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            )}
+
+          </main>
+
+        </div>
+
+        {/* =======================================================
+            FOOTER (COPYRIGHT & USEFUL LINKS)
+            ======================================================= */}
+        <footer className="bg-white border-t border-neutral-100 py-6 mt-12 text-xs font-inter text-neutral-400">
+          <div className="max-w-7xl w-full mx-auto px-6 flex flex-col sm:flex-row justify-between items-center gap-3">
+            <div>
+              <p className="font-semibold text-neutral-500">© 2026 ApexDash. All rights reserved.</p>
+              <p className="text-[10px] text-neutral-400 mt-0.5">Core Administrator Integrated Suite Suite Portal.</p>
+            </div>
+            <div className="flex gap-4 font-bold text-[#1E88E5]">
+              <button onClick={() => addToast('Syarat & Ketentuan Layanan dibuka.', 'info')} className="hover:underline">Terms of Service</button>
+              <button onClick={() => addToast('Kebijakan Privasi dibuka.', 'info')} className="hover:underline">Privacy Policy</button>
+              <button onClick={() => addToast('Sistem Uptime 100% lancar.', 'success')} className="text-[#43A047] flex items-center gap-1.5">
+                <span className="w-2.5 h-2.5 rounded-full bg-[#43A047] animate-pulse"></span>
+                System Normal
+              </button>
+            </div>
+          </div>
+        </footer>
+
+      </div>
+
+      {/* =======================================================
+          MODAL 1: ADD / EDIT MEMBER (STATE DRIVEN)
+          ======================================================= */}
+      {showMemberModal && (
+        <div className="fixed inset-0 bg-neutral-900/60 backdrop-blur-sm z-50 flex items-center justify-center p-4 animate-fade-in font-inter">
+          <div className="bg-white rounded-2xl w-full max-w-md p-6 shadow-2xl border border-neutral-100 transform transition-all scale-100">
+            <div className="flex justify-between items-center mb-5">
+              <h3 className="text-base font-extrabold text-[#212121] font-poppins">
+                {editingMember ? '📝 Sunting Informasi Anggota' : '👥 Tambah Anggota Baru'}
+              </h3>
+              <button 
+                onClick={() => setShowMemberModal(false)}
+                className="w-8 h-8 rounded-xl bg-neutral-50 hover:bg-neutral-100 flex items-center justify-center text-neutral-500 font-bold"
               >
                 ✕
               </button>
             </div>
 
-            <p className="text-xs text-slate-500 mb-4">Dapatkan diskon logistik flat-rate 10%, layanan kuli bongkar muat gratis, dan sistem pembayaran termin (Tempo 30 hari).</p>
-
-            <form 
-              onSubmit={(e) => {
-                e.preventDefault();
-                setShowVipModal(false);
-                triggerToast(`Pendaftaran Perusahaan ${vipForm.company} sukses! Tim Account Manager akan menghubungi PIC.`);
-              }} 
-              className="space-y-4 text-xs"
-            >
+            <form onSubmit={handleSaveMember} className="space-y-4 text-xs font-medium text-neutral-500">
               <div>
-                <label className="block font-bold text-slate-500 mb-1">Nama Perusahaan / Kontraktor</label>
+                <label className="block font-bold mb-1">Nama Lengkap</label>
                 <input 
                   type="text" 
-                  value={vipForm.company}
-                  onChange={(e) => setVipForm({ ...vipForm, company: e.target.value })}
-                  placeholder="Contoh: PT. Maju Karya Konstruksi"
-                  className="w-full border border-slate-200 rounded-xl p-3 focus:outline-none focus:ring-1 focus:ring-[#00805A]"
+                  value={memberForm.name}
+                  onChange={(e) => setMemberForm({ ...memberForm, name: e.target.value })}
+                  placeholder="Contoh: Muhammad Yusuf"
+                  className="w-full border border-neutral-200 rounded-xl p-3 focus:outline-none focus:ring-2 focus:ring-[#1E88E5] text-[#212121]"
+                  required
+                />
+              </div>
+
+              <div>
+                <label className="block font-bold mb-1">Alamat Email Aktif</label>
+                <input 
+                  type="email" 
+                  value={memberForm.email}
+                  onChange={(e) => setMemberForm({ ...memberForm, email: e.target.value })}
+                  placeholder="yusuf@domain.com"
+                  className="w-full border border-neutral-200 rounded-xl p-3 focus:outline-none focus:ring-2 focus:ring-[#1E88E5] text-[#212121]"
                   required
                 />
               </div>
 
               <div className="grid grid-cols-2 gap-3">
                 <div>
-                  <label className="block font-bold text-slate-500 mb-1">Nama PIC Proyek</label>
-                  <input 
-                    type="text" 
-                    value={vipForm.pic}
-                    onChange={(e) => setVipForm({ ...vipForm, pic: e.target.value })}
-                    className="w-full border border-slate-200 rounded-xl p-3 focus:outline-none focus:ring-1 focus:ring-[#00805A]"
-                    required
-                  />
+                  <label className="block font-bold mb-1">Peran Akses</label>
+                  <select 
+                    value={memberForm.role}
+                    onChange={(e) => setMemberForm({ ...memberForm, role: e.target.value })}
+                    className="w-full border border-neutral-200 bg-white rounded-xl p-3 focus:outline-none focus:ring-2 focus:ring-[#1E88E5] text-[#212121]"
+                  >
+                    <option value="Member">Member</option>
+                    <option value="Editor">Editor</option>
+                    <option value="Administrator">Administrator</option>
+                  </select>
                 </div>
                 <div>
-                  <label className="block font-bold text-slate-500 mb-1">No. Handphone PIC</label>
-                  <input 
-                    type="text" 
-                    value={vipForm.phone}
-                    onChange={(e) => setVipForm({ ...vipForm, phone: e.target.value })}
-                    className="w-full border border-slate-200 rounded-xl p-3 focus:outline-none focus:ring-1 focus:ring-[#00805A]"
-                    required
-                  />
+                  <label className="block font-bold mb-1">Status Akun</label>
+                  <select 
+                    value={memberForm.status}
+                    onChange={(e) => setMemberForm({ ...memberForm, status: e.target.value })}
+                    className="w-full border border-neutral-200 bg-white rounded-xl p-3 focus:outline-none focus:ring-2 focus:ring-[#1E88E5] text-[#212121]"
+                  >
+                    <option value="Active">Active</option>
+                    <option value="Suspended">Suspended</option>
+                  </select>
                 </div>
               </div>
 
-              <div>
-                <label className="block font-bold text-slate-500 mb-1">Alamat Kantor Pusat</label>
-                <textarea 
-                  value={vipForm.address}
-                  onChange={(e) => setVipForm({ ...vipForm, address: e.target.value })}
-                  className="w-full border border-slate-200 rounded-xl p-2.5 focus:outline-none focus:ring-1 focus:ring-[#00805A] h-16"
-                  required
-                />
+              <div className="pt-2 flex gap-3">
+                <button
+                  type="button"
+                  onClick={() => setShowMemberModal(false)}
+                  className="flex-1 bg-neutral-100 text-neutral-600 hover:bg-neutral-200 py-3 rounded-xl font-bold text-xs transition"
+                >
+                  Batal
+                </button>
+                <button
+                  type="submit"
+                  className="flex-1 bg-[#1E88E5] text-white py-3 rounded-xl font-bold text-xs shadow-lg hover:bg-[#1565C0] transition"
+                >
+                  {editingMember ? 'Simpan Perubahan' : 'Daftarkan Anggota'}
+                </button>
               </div>
-
-              <button
-                type="submit"
-                className="w-full bg-[#00805A] text-white py-3.5 rounded-xl font-bold text-xs shadow-lg hover:bg-[#006647] transition"
-              >
-                KIRIM PENGAJUAN KEMITRAAN B2B 🚀
-              </button>
             </form>
           </div>
         </div>
       )}
 
-      {}
       {/* =======================================================
-          FOOTER INFORMASI & HAK CIPTA
+          MODAL 2: WRITE BLOG POST (STATE DRIVEN)
           ======================================================= */}
-      <footer className="bg-slate-900 text-white mt-16 border-t border-slate-800">
-        <div className="max-w-7xl mx-auto px-4 py-8 grid grid-cols-1 md:grid-cols-3 gap-6 text-xs text-slate-400">
-          <div>
-            <h4 className="font-extrabold text-slate-200 text-sm mb-3">🏗️ BahanBangunGo Cargo</h4>
-            <p className="leading-relaxed">Solusi logistik premium terpercaya untuk pengiriman bahan bangunan, baja struktural, semen curah, dan kebutuhan infrastruktur nasional.</p>
-          </div>
-          <div>
-            <h4 className="font-extrabold text-slate-200 text-sm mb-3">Layanan Logistik</h4>
-            <ul className="space-y-1.5">
-              <li>• Pengiriman Trucking CDE & CDD</li>
-              <li>• Jasa Kuli Bongkar Muat Proyek</li>
-              <li>• Pengiriman Anti-ODOL Bersertifikasi</li>
-              <li>• Layanan Escrow Pembayaran Aman</li>
-            </ul>
-          </div>
-          <div>
-            <h4 className="font-extrabold text-slate-200 text-sm mb-3">Hubungi Kantor Pusat</h4>
-            <p>Menara Cakung Cargo Lt. 8, Jakarta Timur</p>
-            <p className="mt-1">Email: support@bahanbangungo.id</p>
-            <p className="mt-1">Telp: +62 21-5500-8800</p>
+      {showBlogModal && (
+        <div className="fixed inset-0 bg-neutral-900/60 backdrop-blur-sm z-50 flex items-center justify-center p-4 animate-fade-in font-inter">
+          <div className="bg-white rounded-2xl w-full max-w-lg p-6 shadow-2xl border border-neutral-100 transform transition-all scale-100">
+            <div className="flex justify-between items-center mb-5">
+              <h3 className="text-base font-extrabold text-[#212121] font-poppins">📝 Tulis Artikel Blog Baru</h3>
+              <button 
+                onClick={() => setShowBlogModal(false)}
+                className="w-8 h-8 rounded-xl bg-neutral-50 hover:bg-neutral-100 flex items-center justify-center text-neutral-500 font-bold"
+              >
+                ✕
+              </button>
+            </div>
+
+            <form onSubmit={handleCreateBlog} className="space-y-4 text-xs font-medium text-neutral-500">
+              <div className="grid grid-cols-3 gap-3">
+                <div className="col-span-2">
+                  <label className="block font-bold mb-1">Judul Artikel</label>
+                  <input 
+                    type="text" 
+                    value={blogForm.title}
+                    onChange={(e) => setBlogForm({ ...blogForm, title: e.target.value })}
+                    placeholder="Contoh: Dampak Efisiensi Cargo Modern..."
+                    className="w-full border border-neutral-200 rounded-xl p-3 focus:outline-none focus:ring-2 focus:ring-[#1E88E5] text-[#212121]"
+                    required
+                  />
+                </div>
+                <div>
+                  <label className="block font-bold mb-1">Kategori</label>
+                  <select 
+                    value={blogForm.category}
+                    onChange={(e) => setBlogForm({ ...blogForm, category: e.target.value })}
+                    className="w-full border border-neutral-200 bg-white rounded-xl p-3 focus:outline-none focus:ring-2 focus:ring-[#1E88E5] text-[#212121]"
+                  >
+                    <option value="Logistik">Logistik</option>
+                    <option value="Keselamatan">Keselamatan</option>
+                    <option value="Inspirasi">Inspirasi</option>
+                    <option value="Konstruksi">Konstruksi</option>
+                  </select>
+                </div>
+              </div>
+
+              <div>
+                <label className="block font-bold mb-1">Isi / Materi Artikel</label>
+                <textarea 
+                  value={blogForm.content}
+                  onChange={(e) => setBlogForm({ ...blogForm, content: e.target.value })}
+                  placeholder="Tuliskan draf artikel lengkap Anda di sini..."
+                  className="w-full border border-neutral-200 rounded-xl p-3 h-36 focus:outline-none focus:ring-2 focus:ring-[#1E88E5] text-[#212121] font-opensans leading-relaxed"
+                  required
+                />
+              </div>
+
+              <div className="pt-2 flex gap-3">
+                <button
+                  type="button"
+                  onClick={() => setShowBlogModal(false)}
+                  className="flex-1 bg-neutral-100 text-neutral-600 hover:bg-neutral-200 py-3 rounded-xl font-bold text-xs transition"
+                >
+                  Kembali ke Dashboard
+                </button>
+                <button
+                  type="submit"
+                  className="flex-1 bg-[#1E88E5] text-white py-3 rounded-xl font-bold text-xs shadow-lg hover:bg-[#1565C0] transition"
+                >
+                  🚀 Terbitkan Artikel
+                </button>
+              </div>
+            </form>
           </div>
         </div>
-        <div className="bg-slate-950 py-4 text-center text-[10px] text-slate-600 font-bold uppercase tracking-widest">
-          <p>© 2026 BahanBangunGo Ltd. All rights reserved.</p>
+      )}
+
+      {/* =======================================================
+          MODAL 3: REVIEW / PROCESS REDEEM CLAIM
+          ======================================================= */}
+      {showRedeemModal && selectedRedeem && (
+        <div className="fixed inset-0 bg-neutral-900/60 backdrop-blur-sm z-50 flex items-center justify-center p-4 animate-fade-in font-inter">
+          <div className="bg-white rounded-2xl w-full max-w-sm p-6 shadow-2xl border border-neutral-100 transform transition-all scale-100">
+            <div className="flex justify-between items-center mb-5">
+              <h3 className="text-base font-extrabold text-[#212121] font-poppins">💸 Moderasi Permintaan Klaim</h3>
+              <button 
+                onClick={() => setShowRedeemModal(false)}
+                className="w-8 h-8 rounded-xl bg-neutral-50 hover:bg-neutral-100 flex items-center justify-center text-neutral-500 font-bold"
+              >
+                ✕
+              </button>
+            </div>
+
+            <div className="space-y-4 text-xs text-neutral-500 font-medium">
+              <p className="bg-neutral-50 p-3 rounded-xl border border-neutral-100 leading-relaxed">
+                Anda sedang meninjau pengajuan penukaran hadiah atas nama <b className="text-[#212121]">{selectedRedeem.memberName}</b> pada tanggal <span className="font-bold">{selectedRedeem.date}</span>.
+              </p>
+
+              <div className="space-y-2">
+                <p>🎁 <b>Pilihan Hadiah:</b> {selectedRedeem.prize}</p>
+                <p>💎 <b>Poin Terpotong:</b> {selectedRedeem.points.toLocaleString('id-ID')} Pts</p>
+                <p>🎫 <b>ID Transaksi:</b> {selectedRedeem.id}</p>
+              </div>
+
+              <div className="pt-2 flex gap-2">
+                <button
+                  onClick={() => handleProcessRedeem(selectedRedeem.id, 'Rejected')}
+                  className="flex-1 bg-rose-50 text-rose-600 hover:bg-rose-100 py-3 rounded-xl font-bold text-xs transition"
+                >
+                  Tolak Klaim ✕
+                </button>
+                <button
+                  onClick={() => handleProcessRedeem(selectedRedeem.id, 'Approved')}
+                  className="flex-1 bg-[#43A047] text-white hover:bg-emerald-700 py-3 rounded-xl font-bold text-xs shadow-lg transition"
+                >
+                  Setujui Klaim ✓
+                </button>
+              </div>
+            </div>
+          </div>
         </div>
-      </footer>
+      )}
 
     </div>
   );
