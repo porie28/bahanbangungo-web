@@ -1,128 +1,223 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 
-const INITIAL_DELIVERIES = [
+// ==========================================
+// DATA SIMULASI DATABASE UTAMA (MUTABLE)
+// ==========================================
+const INITIAL_SHIPMENTS = [
   {
-    id: '#H314315796',
-    item: 'Mac Mini M4 Pro',
-    sender: '247 Bedford Ave, Brooklyn, NY 11211',
-    receiver: '472 Jersey Ave, Jersey City, NJ 07302',
-    progress: 40, // Persentase perjalanan kurir
-    eta: '1:13 Hours',
-    status: 'In Transit',
-    type: 'Hardware',
-    driver: {
-      name: 'Michael Hudson',
-      avatar: '👨‍✈️',
-      phone: '+1 (555) 234-5678'
-    }
+    id: 'BBG-998122',
+    item: '20 Sak Semen Gresik (1 Ton)',
+    sender: 'Depo Pusat Cengkareng, Jakarta Barat',
+    receiver: 'Proyek Cluster Harmoni, Tangerang',
+    status: 'Dalam Perjalanan',
+    statusDetail: 'Kurir sedang menuju lokasi proyek melalui jalan Tol Jakarta-Tangerang.',
+    driver: 'Pak Rudi Santoso',
+    fleet: 'Truk Engkel CDE',
+    progress: 65,
+    eta: '45 Menit',
+    weight: 1000,
+    volume: 0.7,
+    date: '23 Juni 2026'
   },
   {
-    id: '#L814315788',
-    item: 'I Phone 16',
-    sender: 'Semen Gresik Depot, Jakarta Utara',
-    receiver: 'Proyek Sudirman Tower, Jakarta Selatan',
-    progress: 85,
-    eta: '15 Mins',
-    status: 'Out for Delivery',
-    type: 'Gadget',
-    driver: {
-      name: 'Yanto Wijaya',
-      avatar: '🛵',
-      phone: '+62 812-3456-7890'
-    }
+    id: 'BBG-776655',
+    item: 'Pasir Cor Merapi (1.5 m³)',
+    sender: 'Depo Tambang Merak, Banten',
+    receiver: 'Gudang Konstruksi Sudirman, Jakarta Selatan',
+    status: 'Disiapkan oleh Toko',
+    statusDetail: 'Barang sedang dimuat ke dalam armada dump truck.',
+    driver: 'Pak Budi Wijaya',
+    fleet: 'Truk Double CDD',
+    progress: 25,
+    eta: '2 Jam 15 Menit',
+    weight: 2100,
+    volume: 1.5,
+    date: '23 Juni 2026'
   },
   {
-    id: '#K814315212',
-    item: '10 Sak Semen Padang',
-    sender: 'TB. Sumber Agung, Jakarta Barat',
-    receiver: 'Kavling Harmoni No. 12, Jakarta Pusat',
+    id: 'BBG-112233',
+    item: 'Besi Beton SNI 10mm (50 Batang)',
+    sender: 'Pabrik Baja Cilegon, Serang',
+    receiver: 'Pembangunan Ruko Daan Mogot, Jakarta Barat',
+    status: 'Selesai',
+    statusDetail: 'Barang telah diterima oleh Bp. Ahmad (Kepala Tukang).',
+    driver: 'Pak Aris Nugroho',
+    fleet: 'Truk Double CDD',
     progress: 100,
-    eta: 'Delivered',
-    status: 'Delivered',
-    type: 'Material',
-    driver: {
-      name: 'Budi Santoso',
-      avatar: '🚚',
-      phone: '+62 857-9988-1122'
-    }
+    eta: 'Tiba di Lokasi',
+    weight: 600,
+    volume: 0.25,
+    date: '22 Juni 2026'
   }
 ];
 
+const DEPOT_OUTLETS = [
+  { region: 'Jakarta', name: 'Hub Utama Jakarta Barat - Cengkareng', address: 'Jl. Lingkar Luar No. 45, Cengkareng', tel: '+62 21-5544-3322' },
+  { region: 'Jakarta', name: 'Hub Jakarta Timur - Cakung', address: 'Kawasan Industri Pulogadung Blok C, Cakung', tel: '+62 21-5544-7788' },
+  { region: 'Tangerang', name: 'Hub Tangerang Raya - Batuceper', address: 'Jl. Pembangunan III No. 12, Batuceper', tel: '+62 21-5577-9911' },
+  { region: 'Bekasi', name: 'Hub Bekasi - Tambun', address: 'Jl. Sultan Hasanuddin No. 88, Tambun Selatan', tel: '+62 21-8899-2211' },
+  { region: 'Bandung', name: 'Hub Priangan - Soekarno Hatta', address: 'Jl. Soekarno-Hatta No. 624, Bandung', tel: '+62 22-7788-5544' }
+];
+
 export default function App() {
-  const [deliveries, setDeliveries] = useState(INITIAL_DELIVERIES);
-  const [selectedId, setSelectedId] = useState('#H314315796');
-  const [activeDeviceScreen, setActiveDeviceScreen] = useState('home'); // onboarding | home | tracking
-  const [showNewDeliveryModal, setShowNewDeliveryModal] = useState(false);
-  const [toast, setToast] = useState(null);
+  const [activeTab, setActiveTab] = useState('tracking'); // tracking | price | outlet | order
+  const [shipments, setShipments] = useState(INITIAL_SHIPMENTS);
+  const [selectedShipmentId, setSelectedShipmentId] = useState('BBG-998122');
+  const [searchTrackingId, setSearchTrackingId] = useState('BBG-998122');
+  const [activeRole, setActiveRole] = useState('customer'); // customer | admin | driver | merchant
+  
+  // State untuk Kalkulator Tarif (Cek Harga)
+  const [calcWeight, setCalcWeight] = useState(1500); // dalam Kg
+  const [calcVolume, setCalcVolume] = useState(1.2); // dalam m³
+  const [calcDistance, setCalcDistance] = useState(25); // dalam Km
+  const [calcFleet, setCalcFleet] = useState('engkel'); // pickup | engkel | double
+  const [helperService, setHelperService] = useState(true);
+  const [calculatedPrice, setCalculatedPrice] = useState(0);
+  const [odolAlert, setOdolAlert] = useState(false);
 
-  // Form State untuk menambah kiriman baru secara interaktif
-  const [newItem, setNewItem] = useState('');
-  const [newSender, setNewSender] = useState('');
-  const [newReceiver, setNewReceiver] = useState('');
+  // State untuk Pencarian Outlet
+  const [selectedRegion, setSelectedRegion] = useState('Jakarta');
 
-  const activeOrder = deliveries.find(d => d.id === selectedId) || deliveries[0];
+  // State untuk Registrasi VIP Client
+  const [showVipModal, setShowVipModal] = useState(false);
+  const [vipForm, setVipForm] = useState({ company: '', pic: '', phone: '', address: '' });
 
-  const triggerToast = (message) => {
-    setToast(message);
-    setTimeout(() => setToast(null), 3000);
+  // State Toast Pemberitahuan
+  const [toastMessage, setToastMessage] = useState(null);
+
+  // State Tanda Tangan Driver (Canvas)
+  const canvasRef = useRef(null);
+  const [isDrawing, setIsDrawing] = useState(false);
+  const [signatureSaved, setSignatureSaved] = useState(false);
+  const [podPhoto, setPodPhoto] = useState(null);
+
+  // ==========================================
+  // KALKULATOR TARIF LOGISTIK & PROTEKSI ODOL
+  // ==========================================
+  useEffect(() => {
+    let baseFare = 150000;
+    let ratePerKm = 8000;
+    let maxCapacity = 3000; // Default Truk Engkel CDE
+
+    if (calcFleet === 'pickup') {
+      baseFare = 75000;
+      ratePerKm = 5000;
+      maxCapacity = 1500;
+    } else if (calcFleet === 'double') {
+      baseFare = 250000;
+      ratePerKm = 12000;
+      maxCapacity = 7000;
+    }
+
+    // Hitung total tarif
+    let total = baseFare + (calcDistance * ratePerKm);
+    if (helperService) total += 50000; // Biaya kuli bongkar flat rate
+
+    setCalculatedPrice(total);
+
+    // Deteksi ODOL (Over Dimension Over Loading)
+    if (calcWeight > maxCapacity) {
+      setOdolAlert(true);
+    } else {
+      setOdolAlert(false);
+    }
+  }, [calcWeight, calcVolume, calcDistance, calcFleet, helperService]);
+
+  // Trigger Notifikasi Toast
+  const triggerToast = (msg) => {
+    setToastMessage(msg);
+    setTimeout(() => setToastMessage(null), 3500);
   };
 
-  const handleSimulateProgress = () => {
-    setDeliveries(prev => prev.map(item => {
-      if (item.id === selectedId) {
-        if (item.progress >= 100) {
-          triggerToast(`Paket ${item.item} sudah sampai di tujuan!`);
-          return item;
-        }
-        const nextProgress = Math.min(item.progress + 20, 100);
-        let nextStatus = item.status;
-        if (nextProgress === 100) nextStatus = 'Delivered';
-        else if (nextProgress > 80) nextStatus = 'Out for Delivery';
-        else nextStatus = 'In Transit';
+  // Mencari Detail Shipments berdasarkan ID
+  const searchedShipment = shipments.find(
+    s => s.id.toLowerCase().trim() === searchTrackingId.toLowerCase().trim()
+  );
 
-        triggerToast(`Kurir bergerak! Progress ${item.item} sekarang ${nextProgress}%`);
-        return { ...item, progress: nextProgress, status: nextStatus, eta: nextProgress === 100 ? 'Delivered' : item.eta };
+  // ==========================================
+  // SIMULATOR MAJU PROSES (ADMIN & DRIVER)
+  // ==========================================
+  const handleSimulateProgress = () => {
+    setShipments(prev => prev.map(s => {
+      if (s.id === selectedShipmentId) {
+        if (s.progress >= 100) {
+          triggerToast(`Muatan ${s.id} sudah selesai dikirim.`);
+          return s;
+        }
+        const nextProgress = Math.min(s.progress + 25, 100);
+        let nextStatus = s.status;
+        let nextDetail = s.statusDetail;
+
+        if (nextProgress === 100) {
+          nextStatus = 'Selesai';
+          nextDetail = 'Muatan telah sukses diserahterimakan dan ditandatangani.';
+        } else if (nextProgress > 75) {
+          nextStatus = 'Dalam Perjalanan';
+          nextDetail = 'Kurir telah keluar tol dan memasuki rute jalan raya kota tujuan.';
+        } else if (nextProgress > 50) {
+          nextStatus = 'Dalam Perjalanan';
+          nextDetail = 'Kurir sedang berada di rest area tol KM 57.';
+        }
+
+        triggerToast(`Status logistik ${s.id} berhasil diperbarui!`);
+        return { ...s, progress: nextProgress, status: nextStatus, statusDetail: nextDetail, eta: nextProgress === 100 ? 'Tiba' : s.eta };
       }
-      return item;
+      return s;
     }));
   };
 
-  // Tambah Pengiriman Baru dari Modal
-  const handleAddDelivery = (e) => {
-    e.preventDefault();
-    if (!newItem || !newSender || !newReceiver) {
-      triggerToast('Harap isi semua kolom rincian!');
-      return;
-    }
+  // Handlers Tanda Tangan Canvas Driver
+  const startDrawing = (e) => {
+    const canvas = canvasRef.current;
+    if (!canvas) return;
+    const ctx = canvas.getContext('2d');
+    ctx.lineWidth = 3;
+    ctx.lineCap = 'round';
+    ctx.strokeStyle = '#000000';
+    const rect = canvas.getBoundingClientRect();
+    const x = (e.clientX || e.touches[0].clientX) - rect.left;
+    const y = (e.clientY || e.touches[0].clientY) - rect.top;
+    ctx.beginPath();
+    ctx.moveTo(x, y);
+    setIsDrawing(true);
+  };
 
-    const newId = '#D' + Math.floor(100000 + Math.random() * 900000);
-    const newRecord = {
-      id: newId,
-      item: newItem,
-      sender: newSender,
-      receiver: newReceiver,
-      progress: 10,
-      eta: '2:30 Hours',
-      status: 'In Transit',
-      type: 'Material',
-      driver: {
-        name: 'Aris Nugroho',
-        avatar: '🚛',
-        phone: '+62 899-7766-5544'
+  const draw = (e) => {
+    if (!isDrawing) return;
+    const canvas = canvasRef.current;
+    const ctx = canvas.getContext('2d');
+    const rect = canvas.getBoundingClientRect();
+    const x = (e.clientX || e.touches[0].clientX) - rect.left;
+    const y = (e.clientY || e.touches[0].clientY) - rect.top;
+    ctx.lineTo(x, y);
+    ctx.stroke();
+  };
+
+  const saveSignature = () => {
+    setSignatureSaved(true);
+    triggerToast('Tanda tangan digital penerima berhasil dikunci!');
+  };
+
+  const handleCompleteDelivery = (shipmentId) => {
+    setShipments(prev => prev.map(s => {
+      if (s.id === shipmentId) {
+        return {
+          ...s,
+          status: 'Selesai',
+          statusDetail: 'Selesai. Barang diterima dengan baik di lokasi proyek.',
+          progress: 100,
+          eta: 'Tiba'
+        };
       }
-    };
-
-    setDeliveries([newRecord, ...deliveries]);
-    setSelectedId(newId);
-    setShowNewDeliveryModal(false);
-    setNewItem('');
-    setNewSender('');
-    setNewReceiver('');
-    triggerToast(`Pengiriman ${newId} berhasil dibuat!`);
+      return s;
+    }));
+    setPodPhoto(null);
+    setSignatureSaved(false);
+    triggerToast(`Pengiriman ${shipmentId} sukses diselesaikan! Dana Escrow dicairkan.`);
   };
 
   return (
-    <div className="min-h-screen bg-[#E1DEDC] font-sans text-slate-800 flex flex-col justify-between p-4 md:p-8 antialiased selection:bg-[#FF5A36] selection:text-white">
+    <div className="min-h-screen bg-[#F0EFEF] font-sans text-slate-800 flex flex-col justify-between antialiased selection:bg-[#00805A] selection:text-white">
       
       {}
       <style>{`
@@ -130,57 +225,31 @@ export default function App() {
         
         body {
           font-family: 'Plus Jakarta Sans', sans-serif !important;
-          background-color: #E1DEDC;
+          background-color: #F3F4F6;
         }
 
-        /* Desain Claymorphism & Efek Bayangan Lembut ala Dribbble */
-        .device-container {
-          background-color: #F4F3F1;
-          border-radius: 44px;
-          border: 12px solid #FFFFFF;
-          box-shadow: 0 24px 48px -12px rgba(0,0,0,0.16), inset 0 2px 4px rgba(255,255,255,0.8);
-          width: 360px;
-          height: 760px;
-          position: relative;
-          overflow: hidden;
-          display: flex;
-          flex-col: column;
+        .bg-logistics-green {
+          background-color: #00805A;
         }
 
-        .notch-bar {
-          width: 140px;
-          height: 24px;
-          background-color: #111827;
-          border-bottom-left-radius: 18px;
-          border-bottom-right-radius: 18px;
-          position: absolute;
-          left: 50%;
-          transform: translateX(-50%);
-          top: 0;
-          z-index: 50;
+        .text-logistics-green {
+          color: #00805A;
         }
 
-        .premium-orange {
-          color: #FF5A36;
+        .bg-logistics-yellow {
+          background-color: #F2C335;
         }
 
-        .bg-premium-orange {
-          background-color: #FF5A36;
-        }
-
-        .bg-premium-gold {
-          background-color: #E8A84D;
-        }
-
-        /* Glassmorphism Frosted Panel */
-        .glass-panel {
-          background: rgba(255, 255, 255, 0.85);
+        .custom-glass {
+          background: rgba(255, 255, 255, 0.9);
           backdrop-filter: blur(12px);
-          -webkit-backdrop-filter: blur(12px);
-          border: 1px solid rgba(255, 255, 255, 0.5);
+          border: 1px solid rgba(255, 255, 255, 0.6);
         }
 
-        /* Sembunyikan scrollbar bawaan agar tetap minimalis */
+        .floating-sidebar {
+          box-shadow: -4px 12px 24px -6px rgba(0,0,0,0.12);
+        }
+
         .no-scrollbar::-webkit-scrollbar {
           display: none;
         }
@@ -190,544 +259,813 @@ export default function App() {
         }
       `}</style>
 
-      {}
-      <header className="w-full max-w-7xl mx-auto flex flex-col md:flex-row justify-between items-center gap-4 mb-6 text-center md:text-left z-10">
-        <div>
-          <div className="flex items-center justify-center md:justify-start gap-2">
-            <span className="text-3xl">🚚</span>
-            <h1 className="text-2xl font-extrabold tracking-tight text-slate-900">
-              BahanBangunGo <span className="text-[#FF5A36] font-normal">Premium Mockup</span>
-            </h1>
-          </div>
-          <p className="text-xs text-slate-500 mt-1 uppercase tracking-widest font-bold">100% High Fidelity Live Interface Mockup</p>
-        </div>
-
-        {/* Kontrol Panel Simulator Driver */}
-        <div className="flex flex-wrap gap-2 justify-center bg-white/90 backdrop-blur-md p-2 rounded-2xl border border-white/60 shadow-md">
-          <button
-            onClick={handleSimulateProgress}
-            className="bg-slate-950 text-white hover:bg-[#FF5A36] text-[11px] font-bold px-4 py-2.5 rounded-xl transition-all duration-300 flex items-center gap-1.5 shadow"
-          >
-            <span>⚡</span> Simulate Driver Progress
-          </button>
-          <button
-            onClick={() => {
-              setDeliveries(INITIAL_DELIVERIES);
-              setSelectedId('#H314315796');
-              triggerToast('Database disetel kembali ke awal.');
-            }}
-            className="bg-white text-slate-700 hover:bg-slate-100 border border-slate-200 text-[11px] font-bold px-3 py-2.5 rounded-xl transition"
-          >
-            Reset Database
-          </button>
-        </div>
-      </header>
-
       {/* TOAST ALERTS */}
-      {toast && (
-        <div className="fixed top-24 left-1/2 transform -translate-x-1/2 z-50 bg-slate-900 text-white text-xs font-bold px-5 py-3.5 rounded-2xl shadow-xl flex items-center gap-2 border border-slate-800 animate-bounce">
-          <span className="w-2 h-2 rounded-full bg-[#FF5A36]"></span>
-          <span>{toast}</span>
+      {toastMessage && (
+        <div className="fixed top-24 left-1/2 transform -translate-x-1/2 z-[100] bg-slate-900 text-white text-xs font-bold px-6 py-3.5 rounded-full shadow-2xl flex items-center gap-2.5 animate-bounce border border-slate-800">
+          <span className="w-2.5 h-2.5 rounded-full bg-[#F2C335] animate-ping"></span>
+          <span>{toastMessage}</span>
         </div>
       )}
 
-      {}
-      <div className="flex lg:hidden bg-white/90 p-1.5 rounded-2xl mb-6 shadow-sm border border-slate-200 w-full max-w-sm mx-auto z-10">
-        {[
-          { id: 'onboarding', label: '1. Onboarding', icon: '✨' },
-          { id: 'home', label: '2. Home Hub', icon: '🏠' },
-          { id: 'tracking', label: '3. Tracking', icon: '📍' }
-        ].map(device => (
-          <button
-            key={device.id}
-            onClick={() => setActiveDeviceScreen(device.id)}
-            className={`flex-1 py-2 text-[10px] font-bold rounded-xl transition-all ${
-              activeDeviceScreen === device.id 
-                ? 'bg-[#FF5A36] text-white shadow-md' 
-                : 'text-slate-500 hover:bg-slate-50'
-            }`}
-          >
-            <span className="block text-sm mb-0.5">{device.icon}</span>
-            {device.label.split('. ')[1]}
-          </button>
-        ))}
-      </div>
-
-      {}
-      <div className="w-full max-w-7xl mx-auto flex-1 flex items-center justify-center">
-        
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-8 justify-items-center w-full">
-
-          {/* ==========================================
-              LAYAR 1: ONBOARDING SCREEN (PERSIS GAMBAR KIRI)
-              ========================================== */}
-          <div className={`${activeDeviceScreen === 'onboarding' ? 'flex' : 'hidden lg:flex'} flex-col items-center`}>
-            <span className="hidden lg:block text-[11px] font-black text-slate-500 uppercase tracking-widest mb-3">Screen 1: Onboarding</span>
-            
-            <div className="device-container flex flex-col justify-between">
-              <div className="notch-bar"></div>
-
-              {/* Konten Atas: Ilustrasi Truck Premium */}
-              <div className="w-full flex-1 relative flex flex-col justify-end items-center overflow-hidden">
-                
-                {/* Background Sky / City Silhouette */}
-                <div className="absolute inset-0 bg-gradient-to-b from-blue-100 to-white z-0"></div>
-
-                {/* Render SVG Ilustrasi Truk Mewah & Kurir (Match 100%) */}
-                <svg className="w-full h-80 z-10" viewBox="0 0 360 320" fill="none" xmlns="http://www.w3.org/2000/svg">
-                  {/* Sky Clouds */}
-                  <path d="M40 80 Q60 60 80 80 T120 80" stroke="#FFFFFF" strokeWidth="4" strokeLinecap="round" />
-                  <path d="M220 100 Q240 80 260 100 T300 100" stroke="#FFFFFF" strokeWidth="4" strokeLinecap="round" />
-                  
-                  {/* Container Stack Background */}
-                  <rect x="20" y="110" width="100" height="90" rx="4" fill="#8B4513" opacity="0.1" />
-                  <rect x="30" y="130" width="80" height="70" rx="3" fill="#D2B48C" opacity="0.2" />
-
-                  {/* High Tech Logistics Truck Body */}
-                  <g transform="translate(40, 110)">
-                    {/* Cargo Container */}
-                    <rect x="20" y="20" width="160" height="90" rx="8" fill="#ECEFF1" />
-                    <rect x="25" y="25" width="150" height="80" rx="4" fill="#CFD8DC" />
-                    {/* Stripes on Container */}
-                    <line x1="50" y1="25" x2="50" y2="105" stroke="#FFFFFF" strokeWidth="3" />
-                    <line x1="90" y1="25" x2="90" y2="105" stroke="#FFFFFF" strokeWidth="3" />
-                    <line x1="130" y1="25" x2="130" y2="105" stroke="#FFFFFF" strokeWidth="3" />
-
-                    {/* Truck Cabin Cabin */}
-                    <path d="M180 40 H230 Q240 40 245 50 L255 75 Q260 85 260 95 V110 H180 Z" fill="#37474F" />
-                    {/* Cabin Window */}
-                    <path d="M200 48 H225 L235 70 H200 Z" fill="#90A4AE" />
-                    {/* Bumper */}
-                    <rect x="240" y="102" width="22" height="8" rx="2" fill="#ECEFF1" />
-                    {/* Yellow Headlight */}
-                    <circle cx="254" cy="94" r="5" fill="#FFEB3B" />
-                  </g>
-
-                  {/* Wheels */}
-                  <circle cx="95" cy="220" r="16" fill="#212121" />
-                  <circle cx="95" cy="220" r="7" fill="#CFD8DC" />
-                  <circle cx="215" cy="220" r="16" fill="#212121" />
-                  <circle cx="215" cy="220" r="7" fill="#CFD8DC" />
-                  <circle cx="265" cy="220" r="16" fill="#212121" />
-                  <circle cx="265" cy="220" r="7" fill="#CFD8DC" />
-
-                  {/* Character Courier 3D Stylized (Friendly Mascot) */}
-                  <g transform="translate(240, 140)">
-                    {/* Body */}
-                    <rect x="15" y="40" width="20" height="40" rx="8" fill="#E8A84D" />
-                    {/* Head */}
-                    <circle cx="25" cy="25" r="15" fill="#FFCC80" />
-                    {/* Cap / Topi Oranye */}
-                    <path d="M10 20 Q25 5 40 20 H10" fill="#E8A84D" />
-                    <path d="M25 10 H45 V15 H25 Z" fill="#E8A84D" />
-                    {/* Mascot Eyes */}
-                    <circle cx="20" cy="24" r="2" fill="#212121" />
-                    <circle cx="30" cy="24" r="2" fill="#212121" />
-                    {/* Smile */}
-                    <path d="M22 29 Q25 32 28 29" stroke="#212121" strokeWidth="2" strokeLinecap="round" />
-                    {/* Holding Package */}
-                    <rect x="5" y="45" width="22" height="18" rx="3" fill="#D7CCC8" stroke="#A1887F" strokeWidth="1" />
-                    <line x1="5" y1="54" x2="27" y2="54" stroke="#A1887F" strokeWidth="1" />
-                  </g>
-                </svg>
-
-                {/* Fade White Overlay */}
-                <div className="absolute bottom-0 left-0 right-0 h-28 bg-gradient-to-t from-white to-transparent z-20"></div>
+      {/* =======================================================
+          TOP NAVBAR (LOGISTICS ENTERPRISE STANDARD)
+          ======================================================= */}
+      <header className="bg-white border-b border-slate-100 sticky top-0 z-40 shadow-sm">
+        <div className="max-w-7xl mx-auto px-4 py-3 flex justify-between items-center">
+          <div className="flex items-center gap-8">
+            {/* Logo Brand */}
+            <div className="flex items-center gap-2">
+              <span className="text-3xl">🏗️</span>
+              <div>
+                <h1 className="font-extrabold text-xl tracking-tight text-slate-900 leading-none flex items-center gap-1.5">
+                  BahanBangun<span className="text-[#00805A]">Go</span>
+                  <span className="text-[10px] bg-slate-100 text-slate-500 px-2 py-0.5 rounded-md font-bold uppercase">Cargo</span>
+                </h1>
+                <p className="text-[10px] text-slate-400 font-bold tracking-widest mt-0.5">HEAVY LOGISTICS PLATFORM</p>
               </div>
+            </div>
 
-              {/* Konten Bawah: Teks & Button Onboarding */}
-              <div className="bg-white px-6 pb-10 pt-4 text-center rounded-t-[40px] shadow-[0_-12px_24px_rgba(0,0,0,0.03)] z-30">
-                <h2 className="text-2xl font-extrabold text-slate-900 leading-tight mb-2">
-                  Receive The World at Your Doorstep
-                </h2>
-                <p className="text-xs text-slate-400 font-medium leading-relaxed max-w-[260px] mx-auto mb-8">
-                  The world's best experiences now arrive easily at your doorstep.
-                </p>
-
-                {/* Tombol Get Start Melengkung Indah */}
-                <button
-                  onClick={() => setActiveDeviceScreen('home')}
-                  className="w-full bg-premium-gold hover:bg-[#FF5A36] text-white py-4 rounded-[20px] font-bold text-sm tracking-wide transition-all duration-300 shadow-lg shadow-amber-500/20 active:scale-95"
-                >
-                  Get Start
-                </button>
+            {/* Desktop Nav Links */}
+            <nav className="hidden lg:flex items-center gap-6 text-xs font-bold text-slate-600">
+              <a href="#" className="hover:text-[#00805A] transition">HOME</a>
+              <div className="relative group">
+                <button className="hover:text-[#00805A] flex items-center gap-1 transition uppercase">LAYANAN ▾</button>
               </div>
+              <div className="relative group">
+                <button className="hover:text-[#00805A] flex items-center gap-1 transition uppercase">INFORMASI ▾</button>
+              </div>
+              <a href="#" className="hover:text-[#00805A] transition">HUBUNGI KAMI</a>
+            </nav>
+          </div>
 
-              {/* Home Bar Indicator */}
-              <div className="w-32 h-1 bg-slate-200 rounded-full mx-auto mb-2"></div>
+          <div className="flex items-center gap-3">
+            {/* VIP Client Portal Action Button */}
+            <button 
+              onClick={() => setShowVipModal(true)}
+              className="bg-[#F2C335] hover:bg-[#E0B224] text-slate-950 text-xs font-extrabold px-4 py-2.5 rounded-xl transition shadow-md shadow-amber-500/10"
+            >
+              👑 Registrasi VIP Client
+            </button>
+            <span className="w-px h-6 bg-slate-200"></span>
+            <span className="text-xs font-bold text-slate-600 hidden sm:inline">👤 porie28</span>
+          </div>
+        </div>
+      </header>
+
+      {/* =======================================================
+          HERO BANNER & PROMOTIONAL SECTION (MATCH J&T CARGO)
+          ======================================================= */}
+      <section className="bg-logistics-green relative text-white py-14 lg:py-20 overflow-hidden">
+        {/* Abstract Vector Patterns */}
+        <div className="absolute inset-0 opacity-15 mix-blend-overlay pointer-events-none">
+          <svg className="w-full h-full" xmlns="http://www.w3.org/2000/svg">
+            <defs>
+              <pattern id="grid" width="40" height="40" patternUnits="userSpaceOnUse">
+                <path d="M 40 0 L 0 0 0 40" fill="none" stroke="white" strokeWidth="1" />
+              </pattern>
+            </defs>
+            <rect width="100%" height="100%" fill="url(#grid)" />
+          </svg>
+        </div>
+
+        <div className="max-w-7xl mx-auto px-4 grid grid-cols-1 lg:grid-cols-12 gap-8 items-center relative z-10">
+          <div className="lg:col-span-7 space-y-4 text-center lg:text-left">
+            <span className="inline-flex items-center gap-1.5 bg-[#F2C335] text-slate-950 font-black text-[10px] px-3.5 py-1 rounded-full uppercase tracking-widest">
+              ⚡ PROYEK LANCAR JAYA
+            </span>
+            <h2 className="text-4xl lg:text-5xl font-black tracking-tight leading-none uppercase">
+              PAKET BESAR & MATERIAL,<br />
+              CARI <span className="text-[#F2C335]">BAHANBANGUNGO</span>!
+            </h2>
+            <p className="text-sm text-emerald-100 max-w-lg font-medium leading-relaxed">
+              Kirim semen, pasir, besi beton, dan kargo berat proyek konstruksi Anda dengan sistem pelacakan GPS real-time, perlindungan anti-ODOL, dan bantuan kuli bongkar profesional.
+            </p>
+            <div className="pt-2 flex flex-wrap justify-center lg:justify-start gap-3">
+              <button 
+                onClick={() => setShowVipModal(true)}
+                className="bg-[#F2C335] hover:bg-white hover:text-slate-900 text-slate-950 font-extrabold text-xs px-6 py-3 rounded-xl transition shadow-lg"
+              >
+                REGISTRASI VIP KONTRAKTOR
+              </button>
+              <button 
+                onClick={() => {
+                  setActiveTab('price');
+                  triggerToast('Gunakan widget di bawah untuk cek tarif logistik.');
+                }}
+                className="bg-emerald-950/40 hover:bg-emerald-900/40 border border-emerald-400/30 font-bold text-xs px-5 py-3 rounded-xl transition"
+              >
+                📊 Panduan Dimensi Armada
+              </button>
             </div>
           </div>
 
-          {/* ==========================================
-              LAYAR 2: HOME DASHBOARD HUB (PERSIS GAMBAR TENGAH)
-              ========================================== */}
-          <div className={`${activeDeviceScreen === 'home' ? 'flex' : 'hidden lg:flex'} flex-col items-center`}>
-            <span className="hidden lg:block text-[11px] font-black text-slate-500 uppercase tracking-widest mb-3">Screen 2: Home Hub</span>
-            
-            <div className="device-container flex flex-col justify-between">
-              <div className="notch-bar"></div>
+          {/* Graphic Side: 3D-like Logistics SVGs */}
+          <div className="lg:col-span-5 hidden lg:flex justify-end relative">
+            <svg className="w-96 h-80 drop-shadow-2xl" viewBox="0 0 400 320" fill="none" xmlns="http://www.w3.org/2000/svg">
+              {/* Ground Shadow */}
+              <ellipse cx="200" cy="280" rx="160" ry="25" fill="#004D36" opacity="0.6" />
+              
+              {/* Semi-3D Premium Cement Mixer Truck */}
+              <g transform="translate(40, 40)">
+                {/* Truck Cabin (Slate Grey) */}
+                <path d="M190 120 H250 Q265 120 270 135 L285 170 Q290 185 290 200 V225 H190 Z" fill="#E2E8F0" />
+                <path d="M210 132 H245 L255 160 H210 Z" fill="#1E293B" /> {/* Window */}
+                <rect x="268" y="210" width="24" height="10" rx="3" fill="#64748B" /> {/* Bumper */}
+                <circle cx="280" cy="195" r="6" fill="#F59E0B" /> {/* Headlight */}
 
-              {/* Area Konten Scrollable */}
-              <div className="flex-1 overflow-y-auto px-5 pt-10 pb-20 no-scrollbar">
+                {/* Rotating Mixer Drum (Emerald Green) */}
+                <ellipse cx="110" cy="165" rx="75" ry="50" fill="#00805A" stroke="#34D399" strokeWidth="3" />
+                <ellipse cx="110" cy="165" rx="55" ry="32" fill="#006647" />
                 
-                {/* Header: Location & Bell */}
-                <div className="flex justify-between items-center mb-6">
-                  <div>
-                    <p className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Location</p>
-                    <div className="flex items-center gap-1.5 mt-0.5">
-                      <span className="text-sm">📍</span>
-                      <span className="font-extrabold text-xs text-slate-800">New York ,USA</span>
-                    </div>
-                  </div>
-                  {/* Notification Icon */}
-                  <button className="w-9 h-9 rounded-full bg-white flex items-center justify-center text-slate-700 shadow-sm relative border border-slate-100">
-                    <span>🔔</span>
-                    <span className="absolute top-2.5 right-2.5 w-2 h-2 rounded-full bg-red-500 border border-white"></span>
-                  </button>
+                {/* Steel Support Brackets */}
+                <rect x="175" y="150" width="18" height="75" fill="#475569" />
+                <rect x="45" y="190" width="20" height="35" fill="#475569" />
+
+                {/* Truck Bed / Chassis */}
+                <rect x="30" y="210" width="170" height="20" rx="4" fill="#334155" />
+
+                {/* Tires */}
+                <circle cx="70" cy="240" r="22" fill="#0F172A" />
+                <circle cx="70" cy="240" r="10" fill="#94A3B8" />
+                <circle cx="120" cy="240" r="22" fill="#0F172A" />
+                <circle cx="120" cy="240" r="10" fill="#94A3B8" />
+                <circle cx="215" cy="240" r="22" fill="#0F172A" />
+                <circle cx="215" cy="240" r="10" fill="#94A3B8" />
+              </g>
+
+              {/* Float Cargo Boxes */}
+              <g transform="translate(20, 180)">
+                <polygon points="30,0 60,15 30,30 0,15" fill="#F2C335" />
+                <polygon points="0,15 30,30 30,60 0,45" fill="#D4A71B" />
+                <polygon points="30,30 60,15 60,45 30,60" fill="#E8B723" />
+              </g>
+            </svg>
+          </div>
+        </div>
+      </section>
+
+      {/* =======================================================
+          WIDGET HUB UTAMA (CEK STATUS, CEK HARGA, CEK OUTLET)
+          ======================================================= */}
+      <section className="max-w-7xl w-full mx-auto px-4 -mt-10 relative z-20">
+        <div className="bg-white rounded-[24px] shadow-xl border border-slate-100 p-5 lg:p-7">
+          
+          {/* Tabs Navigator */}
+          <div className="flex flex-wrap gap-2 border-b border-slate-100 pb-4 mb-6">
+            {[
+              { id: 'tracking', label: '🔍 Cek Status Resi', icon: '📦' },
+              { id: 'price', label: '⚖️ Cek Tarif & Anti-ODOL', icon: '💵' },
+              { id: 'outlet', label: '🏪 Cek Outlet Hub', icon: '📍' },
+              { id: 'order', label: '🏗️ Buat Order Material', icon: '📝' }
+            ].map(tab => (
+              <button
+                key={tab.id}
+                onClick={() => {
+                  setActiveTab(tab.id);
+                  triggerToast(`Membuka panel ${tab.label}`);
+                }}
+                className={`flex items-center gap-2 px-5 py-3 rounded-xl text-xs font-extrabold transition-all ${
+                  activeTab === tab.id 
+                    ? 'bg-[#00805A] text-white shadow-md shadow-emerald-700/10' 
+                    : 'bg-slate-50 text-slate-500 hover:bg-slate-100'
+                }`}
+              >
+                <span>{tab.icon}</span>
+                <span>{tab.label}</span>
+              </button>
+            ))}
+          </div>
+
+          {/* TAB 1: CEK STATUS RESI (LACAK REAL-TIME) */}
+          {activeTab === 'tracking' && (
+            <div className="space-y-6">
+              <div className="flex flex-col md:flex-row gap-3">
+                <div className="flex-1 relative">
+                  <span className="absolute left-4 top-1/2 transform -translate-y-1/2 text-slate-400">🎫</span>
+                  <input 
+                    type="text" 
+                    value={searchTrackingId}
+                    onChange={(e) => setSearchTrackingId(e.target.value)}
+                    placeholder="Masukkan Nomor Resi / ID Order Anda (Contoh: BBG-998122, BBG-776655)" 
+                    className="w-full text-xs font-bold border border-slate-200 rounded-xl pl-10 pr-4 py-3.5 focus:outline-none focus:ring-2 focus:ring-[#00805A]"
+                  />
                 </div>
-
-                {/* Search Bar Minimalis */}
-                <div className="bg-white rounded-2xl p-2.5 shadow-sm border border-slate-100 flex items-center justify-between gap-2 mb-6">
-                  <div className="flex items-center gap-2.5 flex-1 px-1">
-                    <span className="text-slate-400 text-sm">🔍</span>
-                    <input 
-                      type="text" 
-                      placeholder="Search" 
-                      className="text-xs bg-transparent border-0 w-full focus:outline-none font-semibold text-slate-800 placeholder:text-slate-400"
-                    />
-                  </div>
-                  {/* Scan QR Icon */}
-                  <button className="w-7 h-7 rounded-lg bg-premium-gold/10 text-premium-gold flex items-center justify-center text-xs font-bold">
-                    [O]
-                  </button>
-                </div>
-
-                {}
-                <div className="grid grid-cols-2 gap-4 mb-6">
-                  {/* New Delivery Card */}
-                  <button 
-                    onClick={() => setShowNewDeliveryModal(true)}
-                    className="bg-[#FFEEDB] border border-orange-100 hover:scale-105 transition-all rounded-[24px] p-4 text-left flex flex-col justify-between h-28 relative overflow-hidden"
-                  >
-                    <div>
-                      <p className="font-extrabold text-xs text-slate-800 leading-snug">New<br />Delivery</p>
-                    </div>
-                    {/* Mini delivery truck inside card */}
-                    <div className="absolute right-2 bottom-2 text-3xl">🚚</div>
-                  </button>
-
-                  {/* Track Package Card */}
-                  <button 
-                    onClick={() => setActiveDeviceScreen('tracking')}
-                    className="bg-white border border-slate-100 hover:scale-105 transition-all rounded-[24px] p-4 text-left flex flex-col justify-between h-28 relative overflow-hidden shadow-sm"
-                  >
-                    <div>
-                      <p className="font-extrabold text-xs text-slate-800 leading-snug">Track<br />Package</p>
-                    </div>
-                    {/* Mini parcel package inside card */}
-                    <div className="absolute right-2 bottom-2 text-3xl">📦</div>
-                  </button>
-                </div>
-
-                {/* Title: Current Shipment */}
-                <div className="flex justify-between items-center mb-4">
-                  <h3 className="font-extrabold text-sm text-slate-800">Current Shipment</h3>
-                  <button className="text-[10px] font-bold text-slate-400 hover:text-slate-800">See all</button>
-                </div>
-
-                {}
-                <div className="space-y-4">
-                  {deliveries.map(item => (
-                    <div 
-                      key={item.id}
-                      onClick={() => {
-                        setSelectedId(item.id);
-                        triggerToast(`Detail ${item.item} diaktifkan.`);
-                      }}
-                      className={`bg-white rounded-[24px] p-4 border transition-all cursor-pointer shadow-sm ${
-                        selectedId === item.id 
-                          ? 'border-premium-gold ring-2 ring-premium-gold/20' 
-                          : 'border-slate-100 hover:border-slate-200'
-                      }`}
-                    >
-                      <div className="flex items-center gap-3 mb-3">
-                        <div className="w-10 h-10 rounded-xl bg-slate-100 flex items-center justify-center text-lg shadow-inner">
-                          📦
-                        </div>
-                        <div>
-                          <h4 className="font-extrabold text-xs text-slate-800 leading-none">{item.item}</h4>
-                          <p className="text-[9px] text-slate-400 font-bold mt-1.5">ID: {item.id}</p>
-                        </div>
-                      </div>
-
-                      {/* Line Stepper Progress Horizontal */}
-                      <div className="relative py-2">
-                        <div className="h-1 bg-slate-100 rounded-full w-full absolute top-1/2 transform -translate-y-1/2"></div>
-                        {/* Orange Active Progress Bar */}
-                        <div 
-                          className="h-1 bg-premium-gold rounded-full absolute top-1/2 transform -translate-y-1/2 transition-all duration-500"
-                          style={{ width: `${item.progress}%` }}
-                        ></div>
-                        
-                        {/* Progress Stepper Milestones */}
-                        <div className="flex justify-between relative z-10">
-                          <span className={`w-2.5 h-2.5 rounded-full border-2 ${item.progress >= 0 ? 'bg-premium-gold border-white' : 'bg-slate-200 border-white'}`}></span>
-                          <span className={`w-2.5 h-2.5 rounded-full border-2 ${item.progress >= 50 ? 'bg-premium-gold border-white' : 'bg-slate-200 border-white'}`}></span>
-                          <span className={`w-2.5 h-2.5 rounded-full border-2 ${item.progress >= 100 ? 'bg-premium-gold border-white' : 'bg-slate-200 border-white'}`}></span>
-                        </div>
-
-                        {/* Animated sliding delivery truck icon */}
-                        <div 
-                          className="absolute -top-1 transition-all duration-500 transform -translate-x-1/2 text-xs"
-                          style={{ left: `${item.progress}%` }}
-                        >
-                          🛵
-                        </div>
-                      </div>
-
-                      {/* Card Footer Info */}
-                      <div className="flex justify-between items-center mt-3 pt-2.5 border-t border-slate-50 text-[10px] text-slate-500 font-bold">
-                        <div>
-                          <span className="block text-[8px] text-slate-400 font-medium">Location</span>
-                          <span className="text-slate-700">Jersey City</span>
-                        </div>
-                        <div className="text-right">
-                          <span className="block text-[8px] text-slate-400 font-medium">Delivery Time</span>
-                          <span className="text-premium-gold">{item.eta}</span>
-                        </div>
-                      </div>
-                    </div>
-                  ))}
-                </div>
-
+                <button 
+                  onClick={() => {
+                    if (searchedShipment) {
+                      triggerToast(`Resi ${searchTrackingId} ditemukan!`);
+                    } else {
+                      triggerToast(`Resi tidak ditemukan. Gunakan ID simulasi.`);
+                    }
+                  }}
+                  className="bg-[#00805A] hover:bg-[#006647] text-white text-xs font-black px-6 py-3.5 rounded-xl transition"
+                >
+                  CEK RESI
+                </button>
               </div>
 
-              {/* Floating Menu Bottom Nav Bar (Kapsul Melayang) */}
-              <div className="absolute bottom-4 left-4 right-4 z-40 bg-white/90 backdrop-blur-md rounded-[24px] p-2 border border-slate-150/60 shadow-lg flex justify-around items-center">
-                {[
-                  { label: 'Home', icon: '🏠', active: true },
-                  { label: 'Map', icon: '🧭', active: false },
-                  { label: 'Cart', icon: '🛒', active: false },
-                  { label: 'Profile', icon: '👤', active: false }
-                ].map((tab, i) => (
+              {/* Hasil Pelacakan Resi */}
+              {searchedShipment ? (
+                <div className="bg-slate-50 rounded-2xl p-5 border border-slate-100 grid grid-cols-1 lg:grid-cols-12 gap-6">
+                  
+                  {/* Informasi Ringkas */}
+                  <div className="lg:col-span-4 space-y-4 border-b lg:border-b-0 lg:border-r border-slate-200 pb-5 lg:pb-0 lg:pr-6">
+                    <div>
+                      <span className="text-[10px] bg-emerald-100 text-[#00805A] px-2.5 py-1 rounded-md font-bold uppercase">{searchedShipment.status}</span>
+                      <h4 className="text-base font-extrabold text-slate-900 mt-2">{searchedShipment.id}</h4>
+                      <p className="text-xs text-slate-400 mt-0.5">Tanggal Pengapalan: {searchedShipment.date}</p>
+                    </div>
+
+                    <div className="text-xs space-y-2 text-slate-600">
+                      <p>📦 <b>Barang:</b> {searchedShipment.item}</p>
+                      <p>🚛 <b>Armada:</b> {searchedShipment.fleet}</p>
+                      <p>👨‍✈️ <b>Driver:</b> {searchedShipment.driver}</p>
+                      <p>⏳ <b>Estimasi Tiba:</b> {searchedShipment.eta}</p>
+                    </div>
+                  </div>
+
+                  {/* Rute & Live Stepper Progress */}
+                  <div className="lg:col-span-8 flex flex-col justify-between">
+                    <div>
+                      <h5 className="font-extrabold text-xs text-slate-800 mb-3">Timeline Pelacakan Pengiriman:</h5>
+                      
+                      {/* Horizontal progress tracker */}
+                      <div className="relative py-4">
+                        <div className="h-1 bg-slate-200 rounded-full w-full absolute top-1/2 transform -translate-y-1/2"></div>
+                        <div 
+                          className="h-1 bg-[#00805A] rounded-full absolute top-1/2 transform -translate-y-1/2 transition-all duration-700"
+                          style={{ width: `${searchedShipment.progress}%` }}
+                        ></div>
+                        
+                        {/* Stepper Milestones */}
+                        <div className="flex justify-between relative z-10">
+                          <div className="flex flex-col items-center">
+                            <span className="w-4 h-4 rounded-full border-2 border-white bg-[#00805A]"></span>
+                            <span className="text-[9px] font-bold text-slate-500 mt-1">Disiapkan</span>
+                          </div>
+                          <div className="flex flex-col items-center">
+                            <span className={`w-4 h-4 rounded-full border-2 border-white ${searchedShipment.progress >= 50 ? 'bg-[#00805A]' : 'bg-slate-200'}`}></span>
+                            <span className="text-[9px] font-bold text-slate-500 mt-1">Dalam Perjalanan</span>
+                          </div>
+                          <div className="flex flex-col items-center">
+                            <span className={`w-4 h-4 rounded-full border-2 border-white ${searchedShipment.progress >= 100 ? 'bg-[#00805A]' : 'bg-slate-200'}`}></span>
+                            <span className="text-[9px] font-bold text-slate-500 mt-1">Tiba</span>
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+
+                    <div className="bg-[#00805A]/5 border border-[#00805A]/10 rounded-xl p-3 mt-4">
+                      <p className="text-[10px] text-[#00805A] font-bold uppercase tracking-wider">Status Terkini:</p>
+                      <p className="text-xs text-slate-700 font-medium mt-1">"{searchedShipment.statusDetail}"</p>
+                    </div>
+                  </div>
+
+                </div>
+              ) : (
+                <div className="text-center py-6 bg-slate-50 rounded-2xl border border-dashed border-slate-200">
+                  <span className="text-3xl">⚠️</span>
+                  <p className="text-xs text-slate-500 font-bold mt-2">Nomor resi "{searchTrackingId}" tidak ditemukan. Harap pastikan kembali.</p>
+                </div>
+              )}
+            </div>
+          )}
+
+          {/* TAB 2: CEK HARGA (KALKULATOR ONGKIR & ANTI-ODOL) */}
+          {activeTab === 'price' && (
+            <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
+              
+              {/* Parameter Input */}
+              <div className="lg:col-span-7 space-y-4">
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <div>
+                    <label className="block text-[10px] font-bold text-slate-400 uppercase mb-1">Pilih Jenis Kendaraan / Armada</label>
+                    <select 
+                      value={calcFleet}
+                      onChange={(e) => setCalcFleet(e.target.value)}
+                      className="w-full text-xs font-bold border border-slate-200 rounded-xl p-3 focus:outline-none focus:ring-1 focus:ring-[#00805A]"
+                    >
+                      <option value="pickup">🚗 Mobil Pick-Up (Maks 1.5 Ton)</option>
+                      <option value="engkel">🚚 Truk Engkel CDE (Maks 3 Ton)</option>
+                      <option value="double">🚛 Truk Double CDD (Maks 7 Ton)</option>
+                    </select>
+                  </div>
+
+                  <div>
+                    <label className="block text-[10px] font-bold text-slate-400 uppercase mb-1">Jarak Pengiriman (Km)</label>
+                    <input 
+                      type="number" 
+                      value={calcDistance}
+                      onChange={(e) => setCalcDistance(Math.max(1, parseInt(e.target.value) || 0))}
+                      className="w-full text-xs font-bold border border-slate-200 rounded-xl p-3 focus:outline-none focus:ring-1 focus:ring-[#00805A]"
+                    />
+                  </div>
+                </div>
+
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <div>
+                    <label className="block text-[10px] font-bold text-slate-400 uppercase mb-1">Total Berat Muatan (Kg)</label>
+                    <input 
+                      type="number" 
+                      value={calcWeight}
+                      onChange={(e) => setCalcWeight(Math.max(1, parseInt(e.target.value) || 0))}
+                      className="w-full text-xs font-bold border border-slate-200 rounded-xl p-3 focus:outline-none focus:ring-1 focus:ring-[#00805A]"
+                    />
+                  </div>
+
+                  <div>
+                    <label className="block text-[10px] font-bold text-slate-400 uppercase mb-1">Estimasi Volume (m³)</label>
+                    <input 
+                      type="number" 
+                      step="0.1"
+                      value={calcVolume}
+                      onChange={(e) => setCalcVolume(Math.max(0.1, parseFloat(e.target.value) || 0))}
+                      className="w-full text-xs font-bold border border-slate-200 rounded-xl p-3 focus:outline-none focus:ring-1 focus:ring-[#00805A]"
+                    />
+                  </div>
+                </div>
+
+                <div>
+                  <label className="flex items-center gap-2 cursor-pointer bg-slate-50 p-3 rounded-xl border border-slate-100">
+                    <input 
+                      type="checkbox" 
+                      checked={helperService}
+                      onChange={(e) => setHelperService(e.target.checked)}
+                      className="rounded text-[#00805A] focus:ring-[#00805A] w-4 h-4"
+                    />
+                    <div className="text-xs">
+                      <p className="font-bold text-slate-800">Tambahkan Jasa Helper (Kuli Bongkar Muat)</p>
+                      <p className="text-[10px] text-slate-400">Bantuan menaikkan/menurunkan semen & besi ke proyek (+Rp50.000)</p>
+                    </div>
+                  </label>
+                </div>
+              </div>
+
+              {/* Summary Kalkulasi & Keamanan */}
+              <div className="lg:col-span-5 bg-slate-50 rounded-2xl p-5 border border-slate-100 flex flex-col justify-between">
+                <div>
+                  <h4 className="font-extrabold text-xs text-slate-400 uppercase tracking-widest">Estimasi Ongkos Kirim</h4>
+                  <p className="text-2xl font-black text-slate-900 mt-1">Rp {calculatedPrice.toLocaleString('id-ID')}</p>
+                  
+                  <div className="text-[11px] text-slate-500 space-y-1.5 mt-4 border-t border-slate-200 pt-3">
+                    <p>🛣️ <b>Jarak Rute:</b> {calcDistance} Km</p>
+                    <p>⚖️ <b>Bobot Muatan:</b> {calcWeight} Kg</p>
+                    <p>📦 <b>Kebutuhan Ruang:</b> {calcVolume} m³</p>
+                  </div>
+                </div>
+
+                {/* ODOL Alert Indicator */}
+                <div className={`mt-4 p-3 rounded-xl border text-xs font-semibold ${
+                  odolAlert 
+                    ? 'bg-rose-50 border-rose-200 text-rose-800' 
+                    : 'bg-emerald-50 border-emerald-200 text-emerald-800'
+                }`}>
+                  {odolAlert ? (
+                    <p>🚨 <b>Overloading Warning (ODOL)!</b> Bobot melebihi kapasitas standar armada pilihan Anda. Harap tingkatkan armada atau pecah muatan.</p>
+                  ) : (
+                    <p>✅ <b>Safety Cleared!</b> Muatan Anda aman sesuai regulasi daya angkut jalan raya nasional.</p>
+                  )}
+                </div>
+              </div>
+
+            </div>
+          )}
+
+          {/* TAB 3: CEK OUTLET DEPOT */}
+          {activeTab === 'outlet' && (
+            <div className="space-y-4">
+              <div className="flex gap-2">
+                {['Jakarta', 'Tangerang', 'Bekasi', 'Bandung'].map(city => (
                   <button
-                    key={i}
-                    onClick={() => {
-                      if (tab.label === 'Map') setActiveDeviceScreen('tracking');
-                      triggerToast(`Membuka menu ${tab.label}`);
-                    }}
-                    className={`flex items-center gap-1.5 py-2 px-4 rounded-xl transition-all duration-300 ${
-                      tab.active 
-                        ? 'bg-[#111827] text-white shadow-md' 
-                        : 'text-slate-400 hover:text-slate-800'
+                    key={city}
+                    onClick={() => setSelectedRegion(city)}
+                    className={`px-4 py-2 rounded-xl text-xs font-bold transition ${
+                      selectedRegion === city 
+                        ? 'bg-[#00805A] text-white' 
+                        : 'bg-slate-50 text-slate-600 hover:bg-slate-100'
                     }`}
                   >
-                    <span className="text-sm">{tab.icon}</span>
-                    {tab.active && <span className="text-[10px] font-bold">{tab.label}</span>}
+                    📍 {city}
                   </button>
                 ))}
               </div>
 
-              {/* Home Bar Indicator */}
-              <div className="w-32 h-1 bg-slate-200 rounded-full mx-auto mb-2 z-50"></div>
-            </div>
-          </div>
-
-          {/* ==========================================
-              LAYAR 3: LIVE TRACKING SCREEN (PERSIS GAMBAR KANAN)
-              ========================================== */}
-          <div className={`${activeDeviceScreen === 'tracking' ? 'flex' : 'hidden lg:flex'} flex-col items-center`}>
-            <span className="hidden lg:block text-[11px] font-black text-slate-500 uppercase tracking-widest mb-3">Screen 3: Delivery Tracking</span>
-            
-            <div className="device-container flex flex-col justify-between">
-              <div className="notch-bar"></div>
-
-              {}
-              <div className="absolute inset-0 w-full h-[380px] bg-slate-900 z-0 overflow-hidden">
-                <svg className="absolute inset-0 w-full h-full scale-[1.15]" viewBox="0 0 360 380" fill="none" xmlns="http://www.w3.org/2000/svg">
-                  {/* Grid Lines Map (Futuristic Hologram) */}
-                  <path d="M0 60L360 210M0 110L360 260M0 160L360 310M0 210L360 360" stroke="#334155" strokeWidth="1" strokeOpacity="0.4" />
-                  <path d="M0 210L360 60M0 260L360 110M0 310L360 160M0 360L360 210" stroke="#334155" strokeWidth="1" strokeOpacity="0.4" />
-                  
-                  {/* Cyberpunk Tech Roads */}
-                  <path d="M50 120 L 180 180 L 180 300" stroke="#1E293B" strokeWidth="8" strokeLinecap="round" />
-                  <path d="M120 80 L 220 220 L 320 180" stroke="#1E293B" strokeWidth="8" strokeLinecap="round" />
-
-                  {/* GLOWING ORANGE ROUTE */}
-                  <path d="M80 150 L 180 220 L 260 180" stroke="#FF5A36" strokeWidth="4.5" strokeLinecap="round" strokeLinejoin="round" />
-                  <path d="M80 150 L 180 220 L 260 180" stroke="#FFFFFF" strokeWidth="1" strokeLinecap="round" strokeLinejoin="round" />
-
-                  {/* 3D Glassmorphism Buildings */}
-                  <g transform="translate(165, 195)">
-                    <polygon points="15,0 30,8 15,16 0,8" fill="#FF8A65" />
-                    <polygon points="0,8 15,16 15,40 0,32" fill="#E64A19" />
-                    <polygon points="15,16 30,8 30,32 15,40" fill="#FF5A36" />
-                    {/* Glowing Light Ring */}
-                    <circle cx="15" cy="8" r="6" fill="#FFFFFF" className="animate-ping" opacity="0.4" />
-                  </g>
-
-                  {/* Home Destination Pin */}
-                  <g transform="translate(173, 160)">
-                    <rect width="18" height="18" rx="9" fill="#111827" />
-                    <text x="9" y="13" fill="white" fontSize="9" textAnchor="middle">🏠</text>
-                  </g>
-
-                  {/* Glowing Truck Pin */}
-                  <g transform="translate(100, 140)" className="animate-bounce">
-                    <circle cx="15" cy="15" r="16" fill="white" filter="drop-shadow(0px 8px 12px rgba(0,0,0,0.3))" />
-                    <text x="7" y="21" fontSize="15">🚚</text>
-                  </g>
-                </svg>
-
-                {/* Back Button and Map Options Header */}
-                <div className="absolute top-10 left-4 right-4 z-20 flex justify-between items-center">
-                  <button 
-                    onClick={() => setActiveDeviceScreen('home')} 
-                    className="w-9 h-9 rounded-full bg-white flex items-center justify-center text-xs font-bold text-slate-700 shadow shadow-slate-900/10 hover:bg-slate-50 transition"
-                  >
-                    ‹
-                  </button>
-                  <h3 className="font-extrabold text-xs text-slate-900 tracking-tight bg-white/90 backdrop-blur-md px-4 py-1.5 rounded-full shadow border border-white/40">Delivery Tracking</h3>
-                  <button className="w-9 h-9 rounded-full bg-white flex items-center justify-center text-slate-700 shadow font-black">
-                    •••
-                  </button>
-                </div>
-              </div>
-
-              {}
-              <div className="glass-panel rounded-t-[36px] shadow-[0_-12px_36px_rgba(0,0,0,0.12)] flex-1 px-5 pt-4 pb-2 flex flex-col justify-between mt-[320px] z-20">
-                
-                {/* Pull Indicator Bar */}
-                <div className="w-10 h-1 bg-slate-300 rounded-full mx-auto mb-4"></div>
-
-                {/* Tracking ID Header */}
-                <div className="text-center">
-                  <span className="inline-flex items-center gap-1.5 text-[10px] font-extrabold bg-[#FF5A36]/10 text-[#FF5A36] px-3 py-1 rounded-full mb-1">
-                    <span>⚡</span> {activeOrder.status}
-                  </span>
-                  <h2 className="text-lg font-extrabold text-slate-900 tracking-tight">{activeOrder.id}</h2>
-                  <p className="text-[9px] text-slate-400 font-bold uppercase tracking-wider mt-0.5">Transit on Feb 20, 2026</p>
-                </div>
-
-                {/* Rute Alamat dengan Garis Putus-Putus */}
-                <div className="bg-white/60 p-4 rounded-2xl border border-white/50 my-4 text-xs">
-                  <div className="relative pl-6 space-y-4">
-                    {/* Orange Dotted Line */}
-                    <div className="absolute left-2 top-2 bottom-2 w-0.5 border-l-2 border-dashed border-[#FF5A36]"></div>
-
-                    {/* Sender Info */}
-                    <div className="relative">
-                      <span className="absolute -left-[21px] top-1 w-2.5 h-2.5 rounded-full bg-premium-gold ring-4 ring-amber-100"></span>
-                      <p className="text-[9px] text-slate-400 font-bold uppercase">Sender</p>
-                      <p className="font-bold text-slate-700 mt-0.5 leading-tight truncate">{activeOrder.sender}</p>
-                    </div>
-
-                    {/* Receiver Info */}
-                    <div className="relative">
-                      <span className="absolute -left-[21px] top-1 w-2.5 h-2.5 rounded-full bg-[#FF5A36] ring-4 ring-orange-100"></span>
-                      <p className="text-[9px] text-slate-400 font-bold uppercase">Receiver</p>
-                      <p className="font-bold text-slate-700 mt-0.5 leading-tight truncate">{activeOrder.receiver}</p>
-                    </div>
-                  </div>
-                </div>
-
-                {}
-                <div className="bg-white rounded-2xl p-3 border border-slate-100 flex items-center justify-between shadow-sm mb-2">
-                  <div className="flex items-center gap-3">
-                    <div className="w-10 h-10 rounded-xl bg-slate-100 flex items-center justify-center text-xl shadow-inner">
-                      {activeOrder.driver.avatar}
-                    </div>
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                {DEPOT_OUTLETS.filter(o => o.region === selectedRegion).map((outlet, index) => (
+                  <div key={index} className="bg-slate-50 p-4 rounded-xl border border-slate-100 flex justify-between items-center">
                     <div>
-                      <h4 className="font-extrabold text-xs text-slate-800 leading-none">{activeOrder.driver.name}</h4>
-                      <p className="text-[9px] text-slate-400 font-bold mt-1.5">Driver Logistik Aktif</p>
+                      <h4 className="font-extrabold text-xs text-slate-800">🏪 {outlet.name}</h4>
+                      <p className="text-[11px] text-slate-400 mt-1">{outlet.address}</p>
+                      <p className="text-[10px] text-slate-500 font-bold mt-1.5">📞 {outlet.tel}</p>
                     </div>
+                    <span className="text-emerald-600 font-extrabold text-xs bg-emerald-50 px-2.5 py-1 rounded-lg">BUKA</span>
                   </div>
-                  {/* Call Action Button */}
-                  <button 
-                    onClick={() => triggerToast(`Menghubungi driver: ${activeOrder.driver.phone}`)}
-                    className="w-9 h-9 rounded-full bg-slate-900 text-white hover:bg-[#FF5A36] flex items-center justify-center text-sm shadow transition-all duration-300"
-                  >
-                    📞
-                  </button>
-                </div>
-
+                ))}
               </div>
-
-              {/* Home Bar Indicator */}
-              <div className="w-32 h-1 bg-slate-200 rounded-full mx-auto mb-2"></div>
             </div>
-          </div>
+          )}
+
+          {/* TAB 4: BUAT ORDER PORTAL (FAST CHECKOUT) */}
+          {activeTab === 'order' && (
+            <div className="bg-[#00805A]/5 rounded-2xl p-5 border border-[#00805A]/10 text-center space-y-3">
+              <span className="text-4xl">🏗️</span>
+              <h4 className="font-black text-slate-800 text-base">Butuh Pengiriman Material Proyek Sekarang?</h4>
+              <p className="text-xs text-slate-500 max-w-md mx-auto">Kami mengintegrasikan logistik instan langsung dengan toko besi & semen terdekat. Klik di bawah untuk login & pendaftaran VIP.</p>
+              <button 
+                onClick={() => setShowVipModal(true)}
+                className="bg-[#F2C335] hover:bg-slate-900 hover:text-white text-slate-950 font-black text-xs px-6 py-3 rounded-xl transition"
+              >
+                MULAI BUAT ORDER PROYEK
+              </button>
+            </div>
+          )}
 
         </div>
+      </section>
 
+      {/* =======================================================
+          SIMULATOR CONTROL CENTER & MULTI-ROLE SANDBOX
+          ======================================================= */}
+      <section className="max-w-7xl w-full mx-auto p-4 mt-8">
+        <div className="bg-slate-900 rounded-[28px] p-6 text-white shadow-xl">
+          <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 border-b border-slate-800 pb-4 mb-6">
+            <div>
+              <span className="text-[9px] bg-amber-500 text-slate-950 px-2 py-0.5 rounded-md font-bold uppercase">Simulator Hub</span>
+              <h3 className="text-base font-black tracking-tight mt-1">🎛️ Pusat Simulasi Alur Logistik</h3>
+              <p className="text-[11px] text-slate-400 mt-0.5">Ubah peran untuk menguji alur penyiapan barang dari toko, pengantaran driver, hingga tanda tangan PoD.</p>
+            </div>
+
+            {/* Role Switcher */}
+            <div className="flex flex-wrap gap-1.5 bg-slate-800 p-1 rounded-xl">
+              {[
+                { id: 'customer', label: 'Konsumen', icon: '👤' },
+                { id: 'merchant', label: 'Toko Material', icon: '🏪' },
+                { id: 'driver', label: 'Driver Truk', icon: '🚛' }
+              ].map(role => (
+                <button
+                  key={role.id}
+                  onClick={() => {
+                    setActiveRole(role.id);
+                    triggerToast(`Mode disetel ke: ${role.label}`);
+                  }}
+                  className={`flex items-center gap-1 px-3 py-1.5 rounded-lg text-xs font-bold transition-all ${
+                    activeRole === role.id 
+                      ? 'bg-[#00805A] text-white shadow-md' 
+                      : 'text-slate-400 hover:text-slate-200'
+                  }`}
+                >
+                  <span>{role.icon}</span>
+                  <span>{role.label}</span>
+                </button>
+              ))}
+            </div>
+          </div>
+
+          {/* SIMULATOR SCREEN CONTENT */}
+          <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
+            
+            {/* SISI KIRI: AKSI PERAN (SANDBOX) */}
+            <div className="lg:col-span-8 space-y-4">
+              
+              {/* ROLE: CUSTOMER VIEW */}
+              {activeRole === 'customer' && (
+                <div className="bg-slate-800 p-5 rounded-2xl border border-slate-700/60 space-y-4">
+                  <h4 className="font-extrabold text-sm text-[#F2C335]">🛒 Panel Pelanggan (Cari & Pesan Logistik)</h4>
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div className="space-y-3">
+                      <p className="text-xs text-slate-300 font-bold">Simulasi Material Yang Dipesan:</p>
+                      <div className="bg-slate-900 p-3.5 rounded-xl border border-slate-800 text-xs flex justify-between items-center">
+                        <div>
+                          <p className="font-bold">20 Sak Semen Padang 50kg</p>
+                          <p className="text-[10px] text-slate-500 mt-0.5">Total Bobot: 1.000 Kg (1 Ton)</p>
+                        </div>
+                        <span className="font-extrabold">Rp 1.440.000</span>
+                      </div>
+                    </div>
+
+                    <div className="space-y-3">
+                      <p className="text-xs text-slate-300 font-bold">Pilih ID Kiriman yang Mau Dipantau:</p>
+                      <div className="grid grid-cols-1 gap-2">
+                        {shipments.map(s => (
+                          <button
+                            key={s.id}
+                            onClick={() => {
+                              setSelectedShipmentId(s.id);
+                              setSearchTrackingId(s.id);
+                              triggerToast(`Memantau ID ${s.id}`);
+                            }}
+                            className={`p-3 rounded-xl border text-xs font-bold text-left transition ${
+                              selectedShipmentId === s.id 
+                                ? 'border-[#F2C335] bg-[#F2C335]/10 text-[#F2C335]' 
+                                : 'border-slate-700 hover:bg-slate-700 text-slate-300'
+                            }`}
+                          >
+                            🚚 {s.id} ({s.item}) - <span className="font-extrabold">{s.status}</span>
+                          </button>
+                        ))}
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              )}
+
+              {/* ROLE: MERCHANT VIEW */}
+              {activeRole === 'merchant' && (
+                <div className="bg-slate-800 p-5 rounded-2xl border border-slate-700/60 space-y-4">
+                  <h4 className="font-extrabold text-sm text-[#F2C335]">🏪 Panel Mitra Toko (Penyiapan Material)</h4>
+                  <p className="text-xs text-slate-300">Gunakan tombol simulasi di bawah untuk mempercepat progress pengantaran kurir di database.</p>
+                  
+                  <div className="flex gap-3">
+                    <button
+                      onClick={handleSimulateProgress}
+                      className="bg-[#00805A] hover:bg-[#006647] text-white font-extrabold text-xs px-5 py-3 rounded-xl transition flex items-center gap-2"
+                    >
+                      ⚡ Gerakkan Kurir (Simulate Progress)
+                    </button>
+                    <button
+                      onClick={() => {
+                        setShipments(INITIAL_SHIPMENTS);
+                        triggerToast('Data simulasi logistik disetel ulang.');
+                      }}
+                      className="bg-slate-700 hover:bg-slate-600 text-slate-200 font-bold text-xs px-4 py-3 rounded-xl transition"
+                    >
+                      Reset Simulasi
+                    </button>
+                  </div>
+                </div>
+              )}
+
+              {/* ROLE: DRIVER VIEW */}
+              {activeRole === 'driver' && (
+                <div className="bg-slate-800 p-5 rounded-2xl border border-slate-700/60 space-y-4">
+                  <h4 className="font-extrabold text-sm text-[#F2C335]">🚛 Panel Driver & Tanda Tangan PoD (Proof of Delivery)</h4>
+                  <p className="text-xs text-slate-300">Setelah material semen/pasir diturunkan di lokasi proyek, gunakan panel ini untuk mengunci tanda tangan digital penerima.</p>
+
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    {/* Kamera Simulasi */}
+                    <div className="bg-slate-900 border border-slate-800 rounded-xl p-4 flex flex-col items-center justify-center text-center relative overflow-hidden aspect-video">
+                      {podPhoto ? (
+                        <>
+                          <img src={podPhoto} alt="PoD Cargo" className="absolute inset-0 w-full h-full object-cover" />
+                          <button 
+                            onClick={() => setPodPhoto(null)} 
+                            className="absolute top-2 right-2 bg-rose-500 text-white rounded-md px-2 py-1 text-[10px] font-bold"
+                          >
+                            Hapus 🗑️
+                          </button>
+                        </>
+                      ) : (
+                        <div className="space-y-2">
+                          <span className="text-3xl">📷</span>
+                          <p className="text-xs font-bold text-slate-300">Ambil Foto Material Bongkar</p>
+                          <button
+                            onClick={() => setPodPhoto('https://images.unsplash.com/photo-1590069261209-f8e9b8642343?auto=format&fit=crop&w=600&q=80')}
+                            className="bg-slate-800 hover:bg-slate-700 text-white text-[10px] font-bold px-3 py-1.5 rounded-lg transition"
+                          >
+                            Ambil Gambar Simulasi
+                          </button>
+                        </div>
+                      )}
+                    </div>
+
+                    {/* TTD Canvas */}
+                    <div className="bg-slate-900 border border-slate-800 rounded-xl p-3 flex flex-col justify-between aspect-video">
+                      <p className="text-[10px] text-slate-400 font-bold uppercase">Tanda Tangan Penerima di Layar HP:</p>
+                      
+                      <div className="bg-white rounded-lg h-24 relative overflow-hidden my-2">
+                        <canvas
+                          ref={canvasRef}
+                          onMouseDown={startDrawing}
+                          onMouseMove={draw}
+                          onMouseUp={() => setIsDrawing(false)}
+                          onTouchStart={startDrawing}
+                          onTouchMove={draw}
+                          onTouchEnd={() => setIsDrawing(false)}
+                          className="w-full h-full cursor-crosshair block"
+                        />
+                        {signatureSaved && (
+                          <div className="absolute inset-0 bg-emerald-500/10 flex items-center justify-center">
+                            <span className="bg-emerald-600 text-white text-[9px] font-bold px-2 py-0.5 rounded-full">Kunci TTD OK</span>
+                          </div>
+                        )}
+                      </div>
+
+                      <div className="flex justify-between items-center text-[10px]">
+                        <button 
+                          onClick={() => {
+                            const canvas = canvasRef.current;
+                            if (canvas) {
+                              const ctx = canvas.getContext('2d');
+                              ctx.clearRect(0, 0, canvas.width, canvas.height);
+                              setSignatureSaved(false);
+                            }
+                          }}
+                          className="text-rose-400 hover:underline"
+                        >
+                          Hapus TTD
+                        </button>
+                        <button onClick={saveSignature} className="text-emerald-400 font-bold hover:underline">Kunci TTD</button>
+                      </div>
+                    </div>
+                  </div>
+
+                  <button
+                    onClick={() => handleCompleteDelivery(selectedShipmentId)}
+                    disabled={!podPhoto || !signatureSaved}
+                    className={`w-full py-3 rounded-xl font-bold text-xs transition flex items-center justify-center gap-1.5 ${
+                      podPhoto && signatureSaved 
+                        ? 'bg-emerald-600 hover:bg-emerald-700 text-white cursor-pointer' 
+                        : 'bg-slate-700 text-slate-500 cursor-not-allowed'
+                    }`}
+                  >
+                    <span>✔️</span> Konfirmasi & Selesaikan Tugas Pengiriman
+                  </button>
+                </div>
+              )}
+
+            </div>
+
+            {/* SISI KANAN: STATUS DATABASE MONITOR */}
+            <div className="lg:col-span-4 bg-slate-800 p-5 rounded-2xl border border-slate-700/60 flex flex-col justify-between">
+              <div>
+                <h4 className="font-extrabold text-xs text-slate-400 uppercase tracking-widest">Monitor Hub</h4>
+                <p className="text-xs text-slate-300 mt-2">Daftar muatan logistik aktif dalam sistem:</p>
+                
+                <div className="space-y-3 mt-4">
+                  {shipments.map(ship => (
+                    <div 
+                      key={ship.id}
+                      onClick={() => {
+                        setSelectedShipmentId(ship.id);
+                        setSearchTrackingId(ship.id);
+                        triggerToast(`Detail ${ship.id} terpilih.`);
+                      }}
+                      className={`p-3 rounded-xl border text-xs cursor-pointer transition ${
+                        selectedShipmentId === ship.id 
+                          ? 'bg-slate-900 border-[#F2C335]' 
+                          : 'bg-slate-900/40 border-slate-800 hover:border-slate-700'
+                      }`}
+                    >
+                      <div className="flex justify-between font-bold">
+                        <span>{ship.id}</span>
+                        <span className="text-[#F2C335]">{ship.status}</span>
+                      </div>
+                      <p className="text-[10px] text-slate-500 mt-1 truncate">{ship.item}</p>
+                      
+                      {/* Mini bar */}
+                      <div className="w-full bg-slate-800 h-1 rounded-full mt-2 overflow-hidden">
+                        <div className="bg-[#00805A] h-full" style={{ width: `${ship.progress}%` }}></div>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+
+              <div className="border-t border-slate-700 pt-3 mt-4 text-[10px] text-slate-500">
+                <p>Status Driver: 🟢 Online (3 Armadas)</p>
+                <p className="mt-1">Sistem Escrow Terkunci: Aman</p>
+              </div>
+            </div>
+
+          </div>
+        </div>
+      </section>
+
+      {/* =======================================================
+          FLOATING SIDEBAR MENU (RIGHT SIDE ACTION WIDGETS)
+          ======================================================= */}
+      <div className="fixed right-4 bottom-24 z-30 flex flex-col gap-2.5">
+        {[
+          { label: 'WA Chat 24H', icon: '💬', action: () => triggerToast('Menghubungi CS via WhatsApp (Simulasi)...') },
+          { label: 'Cari Tarif', icon: '📊', action: () => { setActiveTab('price'); triggerToast('Membuka Kalkulator Ongkir.'); } },
+          { label: 'Lokasi Depot', icon: '📍', action: () => { setActiveTab('outlet'); triggerToast('Membuka Peta Outlet.'); } },
+          { label: 'Kontraktor VIP', icon: '👑', action: () => setShowVipModal(true) }
+        ].map((widget, i) => (
+          <button
+            key={i}
+            onClick={widget.action}
+            title={widget.label}
+            className="w-12 h-12 rounded-full bg-white text-slate-800 hover:bg-[#00805A] hover:text-white transition-all duration-300 flex items-center justify-center text-lg shadow-xl border border-slate-100 group relative"
+          >
+            <span>{widget.icon}</span>
+            {/* Tooltip Label */}
+            <span className="absolute right-14 bg-slate-900 text-white text-[10px] font-bold px-2.5 py-1.5 rounded-lg opacity-0 group-hover:opacity-100 transition duration-300 pointer-events-none whitespace-nowrap shadow-md">
+              {widget.label}
+            </span>
+          </button>
+        ))}
       </div>
 
-      {}
-      {showNewDeliveryModal && (
-        <div className="fixed inset-0 bg-slate-900/60 backdrop-blur-md z-50 flex items-center justify-center p-4">
-          <div className="bg-white rounded-[32px] w-full max-w-sm p-6 shadow-2xl border border-slate-100 transform transition-all animate-in fade-in zoom-in-95">
+      {/* =======================================================
+          MODAL REGISTRASI VIP CLIENT / MITRA KONTRAKTOR
+          ======================================================= */}
+      {showVipModal && (
+        <div className="fixed inset-0 bg-slate-900/60 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+          <div className="bg-white rounded-[24px] w-full max-w-md p-6 shadow-2xl border border-slate-100 transform transition-all animate-in fade-in zoom-in-95">
             <div className="flex justify-between items-center mb-4">
-              <h3 className="text-base font-extrabold text-slate-900">Buat Kiriman Baru</h3>
+              <h3 className="text-base font-extrabold text-slate-900">👑 Pengajuan VIP Client (Kontraktor B2B)</h3>
               <button 
-                onClick={() => setShowNewDeliveryModal(false)}
+                onClick={() => setShowVipModal(false)}
                 className="w-8 h-8 rounded-full bg-slate-100 flex items-center justify-center text-slate-500 font-bold"
               >
                 ✕
               </button>
             </div>
 
-            <form onSubmit={handleAddDelivery} className="space-y-4">
+            <p className="text-xs text-slate-500 mb-4">Dapatkan diskon logistik flat-rate 10%, layanan kuli bongkar muat gratis, dan sistem pembayaran termin (Tempo 30 hari).</p>
+
+            <form 
+              onSubmit={(e) => {
+                e.preventDefault();
+                setShowVipModal(false);
+                triggerToast(`Pendaftaran Perusahaan ${vipForm.company} sukses! Tim Account Manager akan menghubungi PIC.`);
+              }} 
+              className="space-y-4 text-xs"
+            >
               <div>
-                <label className="block text-[10px] font-bold text-slate-400 uppercase mb-1">Nama Barang / Material</label>
+                <label className="block font-bold text-slate-500 mb-1">Nama Perusahaan / Kontraktor</label>
                 <input 
                   type="text" 
-                  value={newItem}
-                  onChange={(e) => setNewItem(e.target.value)}
-                  placeholder="Contoh: Mac Mini M4 Pro, 10 Sak Semen"
-                  className="w-full text-xs border border-slate-200 rounded-xl p-3 focus:outline-none focus:ring-2 focus:ring-[#FF5A36]"
+                  value={vipForm.company}
+                  onChange={(e) => setVipForm({ ...vipForm, company: e.target.value })}
+                  placeholder="Contoh: PT. Maju Karya Konstruksi"
+                  className="w-full border border-slate-200 rounded-xl p-3 focus:outline-none focus:ring-1 focus:ring-[#00805A]"
                   required
                 />
               </div>
 
-              <div>
-                <label className="block text-[10px] font-bold text-slate-400 uppercase mb-1">Alamat Penjemputan (Pickup)</label>
-                <input 
-                  type="text" 
-                  value={newSender}
-                  onChange={(e) => setNewSender(e.target.value)}
-                  placeholder="Nama toko / depot asal"
-                  className="w-full text-xs border border-slate-200 rounded-xl p-3 focus:outline-none focus:ring-2 focus:ring-[#FF5A36]"
-                  required
-                />
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <label className="block font-bold text-slate-500 mb-1">Nama PIC Proyek</label>
+                  <input 
+                    type="text" 
+                    value={vipForm.pic}
+                    onChange={(e) => setVipForm({ ...vipForm, pic: e.target.value })}
+                    className="w-full border border-slate-200 rounded-xl p-3 focus:outline-none focus:ring-1 focus:ring-[#00805A]"
+                    required
+                  />
+                </div>
+                <div>
+                  <label className="block font-bold text-slate-500 mb-1">No. Handphone PIC</label>
+                  <input 
+                    type="text" 
+                    value={vipForm.phone}
+                    onChange={(e) => setVipForm({ ...vipForm, phone: e.target.value })}
+                    className="w-full border border-slate-200 rounded-xl p-3 focus:outline-none focus:ring-1 focus:ring-[#00805A]"
+                    required
+                  />
+                </div>
               </div>
 
               <div>
-                <label className="block text-[10px] font-bold text-slate-400 uppercase mb-1">Alamat Pengiriman (Drop-off)</label>
-                <input 
-                  type="text" 
-                  value={newReceiver}
-                  onChange={(e) => setNewReceiver(e.target.value)}
-                  placeholder="Lokasi proyek / alamat rumah"
-                  className="w-full text-xs border border-slate-200 rounded-xl p-3 focus:outline-none focus:ring-2 focus:ring-[#FF5A36]"
+                <label className="block font-bold text-slate-500 mb-1">Alamat Kantor Pusat</label>
+                <textarea 
+                  value={vipForm.address}
+                  onChange={(e) => setVipForm({ ...vipForm, address: e.target.value })}
+                  className="w-full border border-slate-200 rounded-xl p-2.5 focus:outline-none focus:ring-1 focus:ring-[#00805A] h-16"
                   required
                 />
               </div>
 
               <button
                 type="submit"
-                className="w-full bg-[#FF5A36] text-white py-3.5 rounded-xl font-bold text-xs shadow-lg shadow-orange-500/10 hover:bg-slate-900 transition-all duration-300"
+                className="w-full bg-[#00805A] text-white py-3.5 rounded-xl font-bold text-xs shadow-lg hover:bg-[#006647] transition"
               >
-                Kirim Sekarang 🚀
+                KIRIM PENGAJUAN KEMITRAAN B2B 🚀
               </button>
             </form>
           </div>
         </div>
       )}
 
-      {/* FOOTER */}
-      <footer className="w-full max-w-7xl mx-auto text-center text-[10px] text-slate-500 font-bold uppercase tracking-widest mt-12 mb-2">
-        <p>© 2026 BahanBangunGo Ltd. All rights reserved.</p>
-        <p className="text-[#FF5A36] mt-1 normal-case font-medium">Rendered with extreme performance and premium precision.</p>
+      {/* =======================================================
+          FOOTER INFORMASI & HAK CIPTA
+          ======================================================= */}
+      <footer className="bg-slate-900 text-white mt-16 border-t border-slate-800">
+        <div className="max-w-7xl mx-auto px-4 py-8 grid grid-cols-1 md:grid-cols-3 gap-6 text-xs text-slate-400">
+          <div>
+            <h4 className="font-extrabold text-slate-200 text-sm mb-3">🏗️ BahanBangunGo Cargo</h4>
+            <p className="leading-relaxed">Solusi logistik premium terpercaya untuk pengiriman bahan bangunan, baja struktural, semen curah, dan kebutuhan infrastruktur nasional.</p>
+          </div>
+          <div>
+            <h4 className="font-extrabold text-slate-200 text-sm mb-3">Layanan Logistik</h4>
+            <ul className="space-y-1.5">
+              <li>• Pengiriman Trucking CDE & CDD</li>
+              <li>• Jasa Kuli Bongkar Muat Proyek</li>
+              <li>• Pengiriman Anti-ODOL Bersertifikasi</li>
+              <li>• Layanan Escrow Pembayaran Aman</li>
+            </ul>
+          </div>
+          <div>
+            <h4 className="font-extrabold text-slate-200 text-sm mb-3">Hubungi Kantor Pusat</h4>
+            <p>Menara Cakung Cargo Lt. 8, Jakarta Timur</p>
+            <p className="mt-1">Email: support@bahanbangungo.id</p>
+            <p className="mt-1">Telp: +62 21-5500-8800</p>
+          </div>
+        </div>
+        <div className="bg-slate-950 py-4 text-center text-[10px] text-slate-600 font-bold uppercase tracking-widest">
+          <p>© 2026 BahanBangunGo Ltd. All rights reserved.</p>
+        </div>
       </footer>
 
     </div>
