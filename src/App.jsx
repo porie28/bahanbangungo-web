@@ -1,1235 +1,749 @@
 import React, { useState, useEffect, useRef } from 'react';
 
-// ==========================================
-// MOCK DATA PREMIUM (SIMULASI DATABASE)
-// ==========================================
-const INITIAL_PRODUCTS = [
-  { id: 'p1', name: 'Semen Padang 50kg', category: 'Semen', price: 72000, stock: 150, unit: 'Sak', weight: 50, volume: 0.035, image: '🧱', description: 'Semen Portland tipe I berkualitas tinggi untuk konstruksi kokoh.' },
-  { id: 'p2', name: 'Pasir Cor Merapi', category: 'Pasir', price: 320000, stock: 25, unit: 'm³', weight: 1400, volume: 1.0, image: '⏳', description: 'Pasir alami vulkanik bergradasi tajam untuk kekuatan beton maksimal.' },
-  { id: 'p3', name: 'Besi Beton 10mm SNI', category: 'Besi', price: 89000, stock: 300, unit: 'Batang', weight: 12, volume: 0.005, image: '⛓️', description: 'Besi beton ulir standar SNI kekuatan tinggi anti karat.' },
-  { id: 'p4', name: 'Cat Tembok Dulux Putih 20L', category: 'Cat', price: 650000, stock: 40, unit: 'Pail', weight: 25, volume: 0.02, image: '🎨', description: 'Cat dinding interior premium daya sebar luas dan mudah dibersihkan.' },
-  { id: 'p5', name: 'Semen Gresik 40kg', category: 'Semen', price: 58000, stock: 80, unit: 'Sak', weight: 40, volume: 0.028, image: '🧱', description: 'Semen serbaguna ekonomis untuk plesteran dan pasangan bata.' },
-];
-
-const INITIAL_MERCHANTS = [
-  { id: 'm1', name: 'TB. Maju Jaya Sentosa', lat: -6.210, lng: 106.820, stock: { p1: 100, p2: 10, p3: 200, p4: 15, p5: 50 }, rating: 4.8 },
-  { id: 'm2', name: 'Depo Bangunan Sejahtera', lat: -6.225, lng: 106.840, stock: { p1: 50, p2: 15, p3: 50, p4: 25, p5: 10 }, rating: 4.6 },
-  { id: 'm3', name: 'TB. Sumber Alam Murah', lat: -6.195, lng: 106.800, stock: { p1: 10, p2: 2, p3: 150, p4: 5, p5: 80 }, rating: 4.2 },
-];
-
-const VEHICLE_TYPES = [
-  { id: 'motor', name: 'Sepeda Motor', maxWeight: 50, baseFare: 10000, perKm: 2500, icon: '🏍️' },
-  { id: 'pickup', name: 'Mobil Pick-Up', maxWeight: 1500, baseFare: 75000, perKm: 5000, icon: '🛻' },
-  { id: 'engkel', name: 'Truk Engkel CDE', maxWeight: 3000, baseFare: 150000, perKm: 8000, icon: '🚚' },
-  { id: 'double', name: 'Truk Double CDD', maxWeight: 7000, baseFare: 250000, perKm: 12000, icon: '🚛' },
+const INITIAL_DELIVERIES = [
+  {
+    id: '#A8653K005',
+    date: 'Feb 20, 2026',
+    status: 'In Transit',
+    statusColor: 'bg-orange-500',
+    pickupAddress: '1527 Pond Reef Rd, Ketchikan, Alaska',
+    deliveryAddress: '23475 Glacier View, Eagle River, Alaska',
+    weight: '2.0 KG',
+    size: 'Medium (30x20x20 cm)',
+    type: 'Box',
+    courier: 'DHL Express',
+    timeline: [
+      { label: 'Picked Up', time: 'Feb 1, 2026 at 04:30 PM', location: 'New York, USA', completed: true },
+      { label: 'In Transit', time: 'Feb 2, 2026 at 11:30 AM', location: 'New York, USA', completed: true },
+      { label: 'Out for Delivery', time: 'Pending', location: 'Alaska, USA', completed: false },
+      { label: 'Delivered', time: 'Pending', location: 'Alaska, USA', completed: false }
+    ]
+  },
+  {
+    id: '#A4735R734',
+    date: 'Feb 15, 2026',
+    status: 'Delivered',
+    statusColor: 'bg-emerald-500',
+    pickupAddress: '128 Sultan Agung, Jakarta Selatan',
+    deliveryAddress: 'Jl. Jenderal Sudirman No. 21, Jakarta',
+    weight: '40.0 KG',
+    size: 'Large (Semen Gresik)',
+    type: 'Heavy Sack',
+    courier: 'BahanBangunGo Logistik',
+    timeline: [
+      { label: 'Picked Up', time: 'Feb 14, 2026 at 08:00 AM', location: 'Semen Gresik Hub', completed: true },
+      { label: 'In Transit', time: 'Feb 14, 2026 at 12:30 PM', location: 'Jakarta Transit', completed: true },
+      { label: 'Out for Delivery', time: 'Feb 15, 2026 at 09:15 AM', location: 'Sudirman Area', completed: true },
+      { label: 'Delivered', time: 'Feb 15, 2026 at 10:45 AM', location: 'Office Tower Jakarta', completed: true }
+    ]
+  },
+  {
+    id: '#A7642T875',
+    date: 'Feb 12, 2026',
+    status: 'Delivered',
+    statusColor: 'bg-emerald-500',
+    pickupAddress: 'Depo Bangunan Sejahtera, Jakarta',
+    deliveryAddress: 'Jl. Merapi Indah No. 42, Sleman',
+    weight: '1400.0 KG',
+    size: 'Super Heavy (Pasir Cor)',
+    type: 'Dump Truck Cargo',
+    courier: 'BahanBangunGo Heavy Cargo',
+    timeline: [
+      { label: 'Picked Up', time: 'Feb 10, 2026 at 10:00 AM', location: 'Depo Merapi', completed: true },
+      { label: 'In Transit', time: 'Feb 11, 2026 at 02:00 PM', location: 'Central Java Highway', completed: true },
+      { label: 'Out for Delivery', time: 'Feb 12, 2026 at 07:30 AM', location: 'Sleman Area', completed: true },
+      { label: 'Delivered', time: 'Feb 12, 2026 at 09:00 AM', location: 'Proyek Merapi Indah', completed: true }
+    ]
+  }
 ];
 
 export default function App() {
-  // --- STATE UTAMA (MENYATUKAN SEMUA AKTOR) ---
-  const [role, setRole] = useState('customer'); // customer | admin | merchant | driver
-  const [products, setProducts] = useState(INITIAL_PRODUCTS);
-  const [merchants, setMerchants] = useState(INITIAL_MERCHANTS);
-  const [orders, setOrders] = useState([]);
-  const [activeTab, setActiveTab] = useState('browse'); // browse | cart | orders | map
+  const [deliveries, setDeliveries] = useState(INITIAL_DELIVERIES);
+  const [selectedId, setSelectedId] = useState('#A8653K005');
+  const [activeDevice, setActiveDevice] = useState('home'); // Untuk layout responsive HP (create | home | tracking)
+  const [toastMessage, setToastMessage] = useState(null);
+  const [searchQuery, setSearchQuery] = useState('');
 
-  // --- STATE KONSUMEN ---
-  const [cart, setCart] = useState([]);
-  const [customerLat, setCustomerLat] = useState(-6.214);
-  const [customerLng, setCustomerLng] = useState(106.825);
-  const [shippingAddress, setShippingAddress] = useState('Jl. Jenderal Sudirman No. 21, Jakarta Selatan');
-  const [addressDetails, setAddressDetails] = useState('');
-  const [selectedAddons, setSelectedAddons] = useState({
-    helper: false, // Jasa Bongkar
-    tol: false,    // Biaya Tol
-    terpal: false  // Terpal pelindung hujan
-  });
-  const [helperCount, setHelperCount] = useState(1);
-  const [deliveryDate, setDeliveryDate] = useState('');
-  const [deliveryTime, setDeliveryTime] = useState('');
-  const [paymentMethod, setPaymentMethod] = useState('transfer');
+  // Form State untuk "Create Shipment" (Layar 1)
+  const [pickupAddress, setPickupAddress] = useState('1527 Pond Reef Rd, Ketchikan, Alaska');
+  const [deliveryAddress, setDeliveryAddress] = useState('23475 Glacier View, Eagle River, Alaska');
+  const [weight, setWeight] = useState('2.0 KG');
+  const [size, setSize] = useState('Medium (30x20x20 cm)');
+  const [packageType, setPackageType] = useState('Box');
+  const [courier, setCourier] = useState('DHL Express');
 
-  // --- STATE CHAT ---
-  const [chats, setChats] = useState([
-    { sender: 'admin', receiver: 'customer', text: 'Halo! Ada yang bisa kami bantu mengenai pengiriman pasir Anda?', timestamp: '10:30' },
-    { sender: 'customer', text: 'Apakah truk double bisa masuk ke gang rumah saya lebar 3 meter?', timestamp: '10:32' }
-  ]);
-  const [newMsg, setNewMsg] = useState('');
+  // Menemukan detail pesanan logistik aktif yang sedang dilacak
+  const activeOrder = deliveries.find(d => d.id === selectedId) || deliveries[0];
 
-  // --- SIGNATURE & POD DRIVER ---
-  const canvasRef = useRef(null);
-  const [isDrawing, setIsDrawing] = useState(false);
-  const [signatureSaved, setSignatureSaved] = useState(false);
-  const [podPhoto, setPodPhoto] = useState(null);
-
-  // ==========================================
-  // KALKULASI PARSING & ATURAN LOGISTIK
-  // ==========================================
-  const cartTotalWeight = cart.reduce((acc, item) => acc + (item.weight * item.quantity), 0);
-  const cartTotalVolume = cart.reduce((acc, item) => acc + (item.volume * item.quantity), 0);
-  const cartTotalPrice = cart.reduce((acc, item) => acc + (item.price * item.quantity), 0);
-
-  // Rekomendasi kendaraan minimum berdasarkan berat barang
-  const recommendedVehicle = VEHICLE_TYPES.find(v => cartTotalWeight <= v.maxWeight) || VEHICLE_TYPES[3];
-
-  // Hitung Jarak Terdekat Menggunakan Formula Haversine Sederhana
-  const getDistance = (lat1, lon1, lat2, lon2) => {
-    const R = 6371; // Radius bumi dalam KM
-    const dLat = (lat2 - lat1) * Math.PI / 180;
-    const dLon = (lon2 - lon1) * Math.PI / 180;
-    const a = 
-      Math.sin(dLat/2) * Math.sin(dLat/2) +
-      Math.cos(lat1 * Math.PI / 180) * Math.cos(lat2 * Math.PI / 180) * Math.sin(dLon/2) * Math.sin(dLon/2);
-    const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a));
-    return parseFloat((R * c).toFixed(2));
+  const triggerToast = (msg) => {
+    setToastMessage(msg);
+    setTimeout(() => {
+      setToastMessage(null);
+    }, 4000);
   };
 
-  // Mencari Toko Terdekat & Memiliki Stok Cukup (Proximity Match)
-  const getProximityRecommendations = () => {
-    return merchants.map(m => {
-      let distance = getDistance(customerLat, customerLng, m.lat, m.lng);
-      
-      // Hitung persentase kecocokan stok barang di keranjang
-      let matchingItemsCount = 0;
-      cart.forEach(item => {
-        const availableStock = m.stock[item.id] || 0;
-        if (availableStock >= item.quantity) {
-          matchingItemsCount++;
-        }
-      });
-      const stockMatchPercent = cart.length > 0 ? Math.round((matchingItemsCount / cart.length) * 100) : 100;
-
-      return {
-        ...m,
-        distance,
-        stockMatchPercent,
-        deliveryCost: Math.round(recommendedVehicle.baseFare + (distance * recommendedVehicle.perKm))
-      };
-    }).sort((a, b) => b.stockMatchPercent - a.stockMatchPercent || a.distance - b.distance);
-  };
-
-  // Total Biaya Pengiriman & Tambahan
-  const selectedMerchantRecommendation = getProximityRecommendations()[0] || null;
-  const rawDeliveryCost = selectedMerchantRecommendation ? selectedMerchantRecommendation.deliveryCost : 0;
-  
-  const addonCost = 
-    (selectedAddons.helper ? helperCount * 50000 : 0) +
-    (selectedAddons.tol ? 30000 : 0) +
-    (selectedAddons.terpal ? 25000 : 0);
-
-  const grandTotal = cartTotalPrice + rawDeliveryCost + addonCost;
-
-  // ==========================================
-  // HANDLERS & SIMULASI ALUR KONSUMEN
-  // ==========================================
-  const addToCart = (product) => {
-    const existing = cart.find(item => item.id === product.id);
-    if (existing) {
-      if (existing.quantity < product.stock) {
-        setCart(cart.map(item => item.id === product.id ? { ...item, quantity: item.quantity + 1 } : item));
-      }
-    } else {
-      setCart([...cart, { ...product, quantity: 1 }]);
-    }
-  };
-
-  const removeFromCart = (id) => {
-    setCart(cart.filter(item => item.id !== id));
-  };
-
-  const updateCartQty = (id, newQty) => {
-    const prod = products.find(p => p.id === id);
-    if (newQty <= 0) {
-      removeFromCart(id);
-    } else if (newQty <= prod.stock) {
-      setCart(cart.map(item => item.id === id ? { ...item, quantity: newQty } : item));
-    }
-  };
-
-  const handleCheckout = () => {
-    if (cart.length === 0) return;
-    
-    const recommendations = getProximityRecommendations();
-    const primaryMerchant = recommendations[0];
-
-    // Cek apakah perlu Split Order
-    const isSplitNeeded = primaryMerchant.stockMatchPercent < 100;
-
-    const newOrder = {
-      id: 'BBG-' + Math.floor(100000 + Math.random() * 900000),
-      date: new Date().toLocaleDateString('id-ID'),
-      scheduledFor: deliveryDate ? `${deliveryDate} Pukul ${deliveryTime || '09:00'}` : 'Segera Kirim (Instant)',
-      items: [...cart],
-      totalWeight: cartTotalWeight,
-      totalVolume: cartTotalVolume,
-      subtotal: cartTotalPrice,
-      deliveryCost: rawDeliveryCost,
-      addonCost,
-      grandTotal,
-      address: shippingAddress,
-      addressDetails,
-      paymentMethod,
-      merchant: primaryMerchant,
-      isSplitNeeded,
-      status: 'Menunggu Konfirmasi Admin', // Menunggu Konfirmasi Admin -> Disiapkan Toko -> Dalam Perjalanan -> Selesai
-      driverName: null,
-      proofOfDelivery: null,
-      signature: null,
+  // Membuat kiriman logistik baru secara instan
+  const handleCreateShipment = (e) => {
+    e.preventDefault();
+    const newId = '#A' + Math.floor(100000 + Math.random() * 900000);
+    const newShipment = {
+      id: newId,
+      date: new Date().toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }),
+      status: 'Picked Up',
+      statusColor: 'bg-blue-500',
+      pickupAddress,
+      deliveryAddress,
+      weight,
+      size,
+      type: packageType,
+      courier,
+      timeline: [
+        { label: 'Picked Up', time: new Date().toLocaleString('en-US', { hour12: true }), location: 'Origin Depot', completed: true },
+        { label: 'In Transit', time: 'Pending', location: 'On the way', completed: false },
+        { label: 'Out for Delivery', time: 'Pending', location: 'Destination City', completed: false },
+        { label: 'Delivered', time: 'Pending', location: 'Final Address', completed: false }
+      ]
     };
 
-    setOrders([newOrder, ...orders]);
-    setCart([]);
-    setActiveTab('orders');
-    setRole('admin'); // Auto Switch ke Admin untuk kemudahan demo loop!
+    setDeliveries([newShipment, ...deliveries]);
+    setSelectedId(newId);
+    triggerToast(`Shipment ${newId} Created successfully!`);
+    setActiveDevice('home'); // Berpindah otomatis ke layar dashboard home
   };
 
-  const handleDispatchOrder = (orderId, targetMerchantId) => {
-    const selectedMerchant = merchants.find(m => m.id === targetMerchantId);
-    setOrders(orders.map(order => {
-      if (order.id === orderId) {
-        return {
-          ...order,
-          merchant: selectedMerchant,
-          status: 'Disiapkan oleh Toko',
-          driverName: 'Pak Budi (Armada ' + recommendedVehicle.name + ')'
-        };
-      }
-      return order;
-    }));
+  // Simulasi Pergerakan Kurir Logistik
+  const handleSimulateProgress = () => {
+    setDeliveries(prevDeliveries => {
+      return prevDeliveries.map(item => {
+        if (item.id === selectedId) {
+          const currentTimeline = [...item.timeline];
+          // Temukan indeks tahap yang belum selesai pertama kali
+          const nextStepIdx = currentTimeline.findIndex(t => !t.completed);
+          
+          if (nextStepIdx !== -1) {
+            currentTimeline[nextStepIdx].completed = true;
+            currentTimeline[nextStepIdx].time = new Date().toLocaleString('en-US', { hour: '2-digit', minute: '2-digit', hour12: true });
+            
+            // Perbarui status utama barang
+            let newStatus = item.status;
+            let newColor = item.statusColor;
+            if (nextStepIdx === 1) { newStatus = 'In Transit'; newColor = 'bg-orange-500'; }
+            else if (nextStepIdx === 2) { newStatus = 'Out for Delivery'; newColor = 'bg-blue-600'; }
+            else if (nextStepIdx === 3) { newStatus = 'Delivered'; newColor = 'bg-emerald-500'; }
+
+            triggerToast(`Driver status updated for ${item.id}: ${currentTimeline[nextStepIdx].label}!`);
+
+            return {
+              ...item,
+              status: newStatus,
+              statusColor: newColor,
+              timeline: currentTimeline
+            };
+          } else {
+            triggerToast(`Shipment ${item.id} is already fully delivered!`);
+          }
+        }
+        return item;
+      });
+    });
   };
 
-  const handleMerchantReady = (orderId) => {
-    setOrders(orders.map(order => {
-      if (order.id === orderId) {
-        return { ...order, status: 'Dalam Perjalanan' };
-      }
-      return order;
-    }));
-  };
-
-  // ==========================================
-  // HANDLERS DRIVER (PROOF OF DELIVERY)
-  // ==========================================
-  const startDrawing = (e) => {
-    const canvas = canvasRef.current;
-    if (!canvas) return;
-    const ctx = canvas.getContext('2d');
-    ctx.lineWidth = 3;
-    ctx.lineCap = 'round';
-    ctx.strokeStyle = '#000000';
-    
-    const rect = canvas.getBoundingClientRect();
-    const x = (e.clientX || e.touches[0].clientX) - rect.left;
-    const y = (e.clientY || e.touches[0].clientY) - rect.top;
-    
-    ctx.beginPath();
-    ctx.moveTo(x, y);
-    setIsDrawing(true);
-  };
-
-  const draw = (e) => {
-    if (!isDrawing) return;
-    const canvas = canvasRef.current;
-    const ctx = canvas.getContext('2d');
-    const rect = canvas.getBoundingClientRect();
-    const x = (e.clientX || e.touches[0].clientX) - rect.left;
-    const y = (e.clientY || e.touches[0].clientY) - rect.top;
-    
-    ctx.lineTo(x, y);
-    ctx.stroke();
-  };
-
-  const stopDrawing = () => {
-    setIsDrawing(false);
-  };
-
-  const clearSignature = () => {
-    const canvas = canvasRef.current;
-    if (canvas) {
-      const ctx = canvas.getContext('2d');
-      ctx.clearRect(0, 0, canvas.width, canvas.height);
-      setSignatureSaved(false);
-    }
-  };
-
-  const saveSignature = () => {
-    setSignatureSaved(true);
-  };
-
-  const handleCompleteDelivery = (orderId) => {
-    setOrders(orders.map(order => {
-      if (order.id === orderId) {
-        return {
-          ...order,
-          status: 'Selesai',
-          proofOfDelivery: podPhoto || 'https://images.unsplash.com/photo-1589939705384-5185137a7f0f?auto=format&fit=crop&w=600&q=80',
-          signature: signatureSaved ? 'SIGNED_VALID' : 'UNSIGNED'
-        };
-      }
-      return order;
-    }));
-    setPodPhoto(null);
-    setSignatureSaved(false);
-  };
-
-  const simulatePodPhotoUpload = () => {
-    setPodPhoto('https://images.unsplash.com/photo-1590069261209-f8e9b8642343?auto=format&fit=crop&w=600&q=80');
-  };
-
-  const handleSendChat = () => {
-    if (!newMsg.trim()) return;
-    const timeNow = new Date().toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit' });
-    setChats([...chats, { sender: role, text: newMsg, timestamp: timeNow }]);
-    setNewMsg('');
-
-    setTimeout(() => {
-      setChats(prev => [...prev, {
-        sender: 'admin',
-        text: 'Baik Kak, pesan Anda telah diterima oleh Tim CS. Kami sedang mengonfirmasi rincian pesanan logistik Anda.',
-        timestamp: timeNow
-      }]);
-    }, 1500);
-  };
+  // Filter pengiriman berdasarkan isian bar pencarian
+  const filteredDeliveries = deliveries.filter(d => 
+    d.id.toLowerCase().includes(searchQuery.toLowerCase()) ||
+    d.courier.toLowerCase().includes(searchQuery.toLowerCase()) ||
+    d.deliveryAddress.toLowerCase().includes(searchQuery.toLowerCase())
+  );
 
   return (
-    <div className="min-h-screen bg-[#F2F2F5] text-slate-800 font-sans flex flex-col antialiased">
+    <div className="min-h-screen bg-[#E1DEDC] font-sans text-[#111827] flex flex-col items-center justify-between p-4 md:p-8 antialiased selection:bg-[#FF5A36] selection:text-white">
       
-      {/* HEADER TOP-BAR */}
-      <header className="bg-white border-b border-slate-100 sticky top-0 z-50">
-        <div className="max-w-7xl mx-auto px-4 py-3 flex flex-wrap justify-between items-center gap-4">
-          <div className="flex items-center gap-3">
-            <span className="text-3xl bg-[#FF5A36]/10 p-2 rounded-2xl">🏗️</span>
-            <div>
-              <h1 className="font-extrabold text-2xl tracking-tight bg-gradient-to-r from-[#FF5A36] to-orange-400 bg-clip-text text-transparent">
-                BahanBangunGo
-              </h1>
-              <p className="text-[11px] font-semibold text-slate-400 uppercase tracking-widest">Smart Logistics Market</p>
-            </div>
+      {/* HEADER UTAMA & WORKSPACE CONTROLLERS */}
+      <header className="w-full max-w-7xl flex flex-col md:flex-row justify-between items-center gap-4 mb-6 text-center md:text-left">
+        <div>
+          <div className="flex items-center justify-center md:justify-start gap-2.5">
+            <span className="text-2xl">📦</span>
+            <h1 className="text-2xl font-extrabold tracking-tight text-slate-900">
+              BahanBangunGo <span className="text-[#FF5A36] font-normal">UI/UX Studio</span>
+            </h1>
           </div>
+          <p className="text-xs text-slate-500 mt-1 uppercase tracking-widest font-bold">100% High Fidelity Live Interface Mockup</p>
+        </div>
 
-          {/* SIMULATOR SWITCHER ROLE (PILLED STYLE) */}
-          <div className="bg-slate-100 p-1 rounded-2xl flex items-center gap-1 shadow-inner border border-slate-200">
-            {[
-              { id: 'customer', label: 'Konsumen', icon: '👤' },
-              { id: 'admin', label: 'Admin Hub', icon: '🛡️' },
-              { id: 'merchant', label: 'Toko/Mitra', icon: '🏪' },
-              { id: 'driver', label: 'Kurir/Driver', icon: '🚛' }
-            ].map(r => (
-              <button
-                key={r.id}
-                onClick={() => { setRole(r.id); setActiveTab(r.id === 'customer' ? 'browse' : 'orders'); }}
-                className={`flex items-center gap-1.5 px-3 py-2 rounded-xl text-xs font-bold transition-all duration-200 ${
-                  role === r.id 
-                    ? 'bg-white text-[#FF5A36] shadow-sm transform scale-102 border border-slate-200/50' 
-                    : 'text-slate-500 hover:text-slate-900'
-                }`}
-              >
-                <span>{r.icon}</span>
-                <span className="hidden sm:inline">{r.label}</span>
-              </button>
-            ))}
-          </div>
+        {/* CONTROLLER PANEL (ADMIN / LOGISTICS SIMULATOR) */}
+        <div className="flex flex-wrap gap-2 justify-center bg-white/80 backdrop-blur-md p-2 rounded-2xl border border-white/60 shadow-sm">
+          <button
+            onClick={handleSimulateProgress}
+            className="bg-slate-950 text-white hover:bg-[#FF5A36] text-[11px] font-bold px-4 py-2.5 rounded-xl transition-all duration-300 flex items-center gap-1.5 shadow-sm shadow-slate-950/10"
+          >
+            <span>⚡</span> Simulate Driver Progress
+          </button>
+          <button
+            onClick={() => {
+              setDeliveries(INITIAL_DELIVERIES);
+              setSelectedId('#A8653K005');
+              triggerToast('Database reset to initial mock data.');
+            }}
+            className="bg-white text-slate-700 hover:bg-slate-100 border border-slate-200 text-[11px] font-bold px-3 py-2.5 rounded-xl transition"
+          >
+            Reset Database
+          </button>
         </div>
       </header>
 
-      {/* BODY UTAMA BERDASARKAN PERSONA */}
-      <main className="flex-1 max-w-7xl w-full mx-auto p-4 grid grid-cols-1 lg:grid-cols-12 gap-6">
+      {/* WORKSPACE AREA: TRIPLE MOCKUP DEVICES */}
+      <div className="w-full max-w-7xl flex-1 flex flex-col items-center justify-center">
         
-        {/* SISI KIRI: KONTEN UTAMA SESUAI PERAN */}
-        <div className="lg:col-span-8 flex flex-col gap-5">
-          
+        {/* TOAST ALERTS DI ATAS LAYAR */}
+        {toastMessage && (
+          <div className="fixed top-8 left-1/2 transform -translate-x-1/2 z-50 bg-slate-900 text-white text-xs font-bold px-5 py-3.5 rounded-2xl shadow-xl flex items-center gap-2 border border-slate-800 animate-bounce">
+            <span className="w-2 h-2 rounded-full bg-[#FF5A36]"></span>
+            <span>{toastMessage}</span>
+          </div>
+        )}
+
+        {/* NAVIGATION TAB UNTUK DEVICE HP (HANYA MUNCUL DI MOBILE / LAYAR KECIL) */}
+        <div className="flex lg:hidden bg-white/90 p-1.5 rounded-2xl mb-6 shadow-sm border border-slate-200 w-full max-w-md">
+          {[
+            { id: 'create', label: '1. Create Shipment', icon: '📝' },
+            { id: 'home', label: '2. Home Hub', icon: '🏠' },
+            { id: 'tracking', label: '3. Live Tracking', icon: '📍' }
+          ].map(device => (
+            <button
+              key={device.id}
+              onClick={() => setActiveDevice(device.id)}
+              className={`flex-1 py-2.5 text-[10px] font-black rounded-xl transition-all ${
+                activeDevice === device.id 
+                  ? 'bg-slate-950 text-white shadow-md' 
+                  : 'text-slate-500 hover:bg-slate-50'
+              }`}
+            >
+              <span className="block text-sm mb-0.5">{device.icon}</span>
+              {device.label.split('. ')[1]}
+            </button>
+          ))}
+        </div>
+
+        {/* CONTAINER UTAMA PERANGKAT (DEVICES LIST) */}
+        <div className="grid grid-cols-1 md:grid-cols-1 lg:grid-cols-3 gap-8 justify-items-center w-full">
+
           {/* =======================================================
-              1. KONSUMEN / CUSTOMER VIEW
+              DEVICE 1: CREATE SHIPMENT SCREEN
               ======================================================= */}
-          {role === 'customer' && (
-            <>
-              {/* Navigasi Customer (Elegant Card Style) */}
-              <div className="bg-white p-2 rounded-2xl flex gap-1.5 border border-slate-200/60 shadow-sm">
-                <button 
-                  onClick={() => setActiveTab('browse')}
-                  className={`flex-1 py-2.5 text-xs font-bold rounded-xl transition-all ${activeTab === 'browse' ? 'bg-[#FF5A36] text-white shadow-md shadow-[#FF5A36]/20' : 'text-slate-600 hover:bg-slate-50'}`}
-                >
-                  🛍️ Jelajah Material
-                </button>
-                <button 
-                  onClick={() => setActiveTab('cart')}
-                  className={`flex-1 py-2.5 text-xs font-bold rounded-xl relative transition-all ${activeTab === 'cart' ? 'bg-[#FF5A36] text-white shadow-md shadow-[#FF5A36]/20' : 'text-slate-600 hover:bg-slate-50'}`}
-                >
-                  🛒 Keranjang Belanja
-                  {cart.length > 0 && (
-                    <span className="absolute top-1.5 right-2 bg-rose-500 text-white text-[9px] w-4.5 h-4.5 rounded-full flex items-center justify-center font-bold">
-                      {cart.reduce((sum, i) => sum + i.quantity, 0)}
-                    </span>
-                  )}
-                </button>
-                <button 
-                  onClick={() => setActiveTab('orders')}
-                  className={`flex-1 py-2.5 text-xs font-bold rounded-xl transition-all ${activeTab === 'orders' ? 'bg-[#FF5A36] text-white shadow-md shadow-[#FF5A36]/20' : 'text-slate-600 hover:bg-slate-50'}`}
-                >
-                  📦 Lacak Pesanan
-                </button>
+          <div className={`${activeDevice === 'create' ? 'flex' : 'hidden lg:flex'} flex-col items-center`}>
+            <span className="hidden lg:block text-[11px] font-black text-slate-500 uppercase tracking-widest mb-3">Screen 1: Create Shipment</span>
+            
+            {/* DEVICE MOCKUP CASE */}
+            <div className="w-[360px] h-[750px] bg-[#F4F3F2] rounded-[48px] p-3.5 shadow-[0_32px_64px_rgba(0,0,0,0.18)] border-[10px] border-white/95 relative flex flex-col justify-between overflow-hidden">
+              
+              {/* STATUS BAR */}
+              <div className="w-full flex justify-between items-center px-6 pt-1 pb-3 text-xs font-semibold text-slate-800">
+                <span>9:41</span>
+                <div className="w-16 h-4 bg-slate-950 rounded-full absolute left-1/2 transform -translate-x-1/2 top-3"></div>
+                <div className="flex items-center gap-1.5">
+                  <span>📶</span>
+                  <span>🔋</span>
+                </div>
               </div>
 
-              {/* VIEW: BROWSE CATALOG (PREMIUM NEUMORPHIC STYLE) */}
-              {activeTab === 'browse' && (
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-5">
-                  {products.map(prod => (
-                    <div key={prod.id} className="bg-white rounded-[28px] p-5 flex flex-col justify-between shadow-[0_8px_30px_rgb(0,0,0,0.02)] border border-slate-100 hover:shadow-[0_8px_30px_rgb(0,0,0,0.06)] transition duration-300">
-                      <div>
-                        <div className="flex gap-4 items-start">
-                          <span className="text-4xl p-4 bg-slate-50 rounded-2xl flex items-center justify-center border border-slate-100">{prod.image}</span>
-                          <div className="flex-1">
-                            <h3 className="font-bold text-slate-800 text-lg leading-tight">{prod.name}</h3>
-                            <span className="inline-block bg-[#FF5A36]/10 text-[#FF5A36] text-[10px] px-2.5 py-1 rounded-lg font-bold mt-2">
-                              {prod.category}
-                            </span>
-                          </div>
-                        </div>
-                        <p className="text-xs text-slate-400 mt-3.5 leading-relaxed">{prod.description}</p>
-                        
-                        <div className="grid grid-cols-2 gap-3 mt-4 text-[11px] text-slate-500 bg-slate-50 p-3 rounded-2xl">
-                          <p>⚖️ Berat: <span className="font-bold text-slate-700">{prod.weight} Kg/{prod.unit}</span></p>
-                          <p>📐 Volume: <span className="font-bold text-slate-700">{prod.volume} m³</span></p>
-                        </div>
-                      </div>
-                      
-                      <div className="border-t border-slate-100 mt-5 pt-4 flex justify-between items-center">
-                        <div>
-                          <p className="text-[10px] text-slate-400 uppercase tracking-wider font-semibold">Harga Satuan</p>
-                          <p className="font-extrabold text-slate-900 text-lg">Rp {prod.price.toLocaleString('id-ID')}</p>
-                        </div>
-                        <button
-                          onClick={() => addToCart(prod)}
-                          className="bg-slate-900 text-white hover:bg-[#FF5A36] font-bold px-4 py-2.5 rounded-xl text-xs transition duration-300 shadow-md shadow-slate-900/10 flex items-center gap-1.5"
-                        >
-                          <span>+</span> Keranjang
-                        </button>
-                      </div>
-                    </div>
-                  ))}
+              {/* SCREEN CONTENT AREA (SCROLLABLE) */}
+              <div className="flex-1 overflow-y-auto px-4 pb-4 scrollbar-none">
+                
+                {/* Header Action Row */}
+                <div className="flex justify-between items-center mb-6 mt-2">
+                  <button onClick={() => setActiveDevice('home')} className="w-9 h-9 rounded-full bg-white border border-slate-100 flex items-center justify-center text-xs font-bold text-slate-700 shadow-sm hover:bg-slate-50 transition">
+                    ‹
+                  </button>
+                  <h3 className="font-extrabold text-sm text-slate-900 tracking-tight">Create Shipment</h3>
+                  <button className="w-9 h-9 rounded-full bg-white border border-slate-100 flex items-center justify-center text-slate-700 shadow-sm font-black">
+                    •••
+                  </button>
                 </div>
-              )}
 
-              {/* VIEW: CART & CHECKOUT LOGISTICS FORM */}
-              {activeTab === 'cart' && (
-                <div className="flex flex-col gap-5">
-                  {cart.length === 0 ? (
-                    <div className="bg-white rounded-[28px] p-12 text-center border border-slate-150 shadow-sm">
-                      <span className="text-6xl block mb-3 animate-bounce">🛒</span>
-                      <h3 className="font-bold text-slate-700 text-lg">Keranjang Belanja Kosong</h3>
-                      <p className="text-slate-400 text-xs mt-1.5 max-w-sm mx-auto">Silakan cari kebutuhan bahan bangunan Anda di halaman Jelajah.</p>
-                      <button onClick={() => setActiveTab('browse')} className="mt-5 bg-[#FF5A36] text-white font-bold px-5 py-3 rounded-xl text-xs shadow-md shadow-[#FF5A36]/10">
-                        Belanja Sekarang
-                      </button>
+                {/* ADDRESS BLOCK */}
+                <div className="bg-white rounded-3xl p-4 shadow-sm border border-slate-100 mb-5">
+                  <div className="relative pl-6 space-y-4 text-xs before:absolute before:left-2 before:top-2 before:bottom-2 before:w-[2px] before:bg-slate-100">
+                    
+                    {/* Pickup Field */}
+                    <div className="relative">
+                      <span className="absolute -left-6.5 top-0.5 w-3.5 h-3.5 rounded-full border-[3px] border-[#FF5A36] bg-white flex items-center justify-center"></span>
+                      <label className="block text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-1">Pickup Address</label>
+                      <input 
+                        type="text" 
+                        value={pickupAddress}
+                        onChange={(e) => setPickupAddress(e.target.value)}
+                        className="w-full text-[11px] font-bold text-slate-700 bg-slate-50/50 p-2.5 rounded-xl border border-slate-100 focus:outline-none focus:ring-1 focus:ring-[#FF5A36]"
+                      />
                     </div>
-                  ) : (
-                    <>
-                      {/* List Item Keranjang */}
-                      <div className="bg-white rounded-[28px] shadow-sm p-5 border border-slate-100">
-                        <h3 className="font-extrabold text-slate-800 text-base mb-4 flex items-center gap-2">
-                          <span>📦</span> Detail Material Proyek
-                        </h3>
-                        <div className="divide-y divide-slate-100">
-                          {cart.map(item => (
-                            <div key={item.id} className="py-3.5 flex justify-between items-center gap-3">
-                              <div className="flex items-center gap-3">
-                                <span className="text-3xl p-3 bg-slate-50 rounded-xl border border-slate-100">{item.image}</span>
-                                <div>
-                                  <h4 className="font-bold text-slate-800 text-sm">{item.name}</h4>
-                                  <p className="text-[11px] text-slate-400">Rp {item.price.toLocaleString('id-ID')} / {item.unit}</p>
-                                </div>
-                              </div>
-                              <div className="flex items-center gap-4">
-                                <div className="flex items-center bg-slate-50 border border-slate-100 rounded-xl p-1">
-                                  <button onClick={() => updateCartQty(item.id, item.quantity - 1)} className="px-2.5 py-1 font-bold text-slate-500 hover:bg-white hover:shadow-sm rounded-lg transition">-</button>
-                                  <span className="px-3.5 text-xs font-bold text-slate-800">{item.quantity}</span>
-                                  <button onClick={() => updateCartQty(item.id, item.quantity + 1)} className="px-2.5 py-1 font-bold text-slate-500 hover:bg-white hover:shadow-sm rounded-lg transition">+</button>
-                                </div>
-                                <button onClick={() => removeFromCart(item.id)} className="text-slate-300 hover:text-rose-500 transition">🗑️</button>
-                              </div>
-                            </div>
-                          ))}
-                        </div>
-                      </div>
 
-                      {/* Kalkulator Geolocation & Titik Drop-off */}
-                      <div className="bg-white rounded-[28px] shadow-sm p-5 border border-slate-100">
-                        <h3 className="font-extrabold text-slate-800 text-base mb-4 flex items-center gap-2">
-                          <span>📍</span> Koordinat Pengiriman Proyek
-                        </h3>
-                        <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
-                          <div>
-                            <label className="block text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-1.5">Alamat Lengkap</label>
-                            <input 
-                              type="text" 
-                              value={shippingAddress} 
-                              onChange={(e) => setShippingAddress(e.target.value)}
-                              className="w-full text-xs font-semibold bg-slate-50 border border-slate-200 rounded-xl px-4 py-3.5 focus:outline-none focus:ring-2 focus:ring-[#FF5A36] focus:bg-white transition"
-                            />
-                            <label className="block text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-1.5 mt-4">Detail Lokasi / Patokan</label>
-                            <textarea 
-                              placeholder="Contoh: Depan mushola Al-Ikhlas, masuk gang sempit max pick-up"
-                              value={addressDetails} 
-                              onChange={(e) => setAddressDetails(e.target.value)}
-                              className="w-full text-xs font-semibold bg-slate-50 border border-slate-200 rounded-xl px-4 py-3 focus:outline-none focus:ring-2 focus:ring-[#FF5A36] focus:bg-white transition h-20 resize-none"
-                            />
-                          </div>
+                    {/* Delivery Field */}
+                    <div className="relative">
+                      <span className="absolute -left-6.5 top-0.5 w-3.5 h-3.5 rounded-full border-[3px] border-slate-800 bg-white flex items-center justify-center"></span>
+                      <label className="block text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-1">Delivery Address</label>
+                      <input 
+                        type="text" 
+                        value={deliveryAddress}
+                        onChange={(e) => setDeliveryAddress(e.target.value)}
+                        className="w-full text-[11px] font-bold text-slate-700 bg-slate-50/50 p-2.5 rounded-xl border border-slate-100 focus:outline-none focus:ring-1 focus:ring-[#FF5A36]"
+                      />
+                    </div>
 
-                          {/* PETA PREMIUM ISOMETRIS/3D STYLIZED */}
-                          <div className="bg-slate-50 rounded-[24px] p-4 border border-slate-200 flex flex-col justify-between">
-                            <div>
-                              <p className="text-xs font-bold text-slate-700 flex justify-between">
-                                <span>Rute & Pemetaan Logistik</span>
-                                <span className="text-[#FF5A36]">Jarak: {selectedMerchantRecommendation ? selectedMerchantRecommendation.distance : 0} KM</span>
-                              </p>
-                              <p className="text-[10px] text-slate-400">Peta rute logistik berbasis 3D Stylized vector.</p>
-                            </div>
-
-                            {/* ISOMETRIC STYLE MAP SIMULATION (Vector SVG) */}
-                            <div className="my-3 bg-slate-200 rounded-2xl relative border border-slate-300 aspect-video overflow-hidden">
-                              <svg className="absolute inset-0 w-full h-full" viewBox="0 0 400 220" fill="none" xmlns="http://www.w3.org/2000/svg">
-                                {/* Grid Isometrik / Pattern */}
-                                <path d="M0 50L400 150M0 100L400 200M0 150L400 250" stroke="#CBD5E1" strokeWidth="1" />
-                                <path d="M0 150L400 50M0 200L400 100M0 250L400 150" stroke="#CBD5E1" strokeWidth="1" />
-                                
-                                {/* Bangunan Non-Aktif (Gleaming Grey) */}
-                                <rect x="40" y="80" width="30" height="40" rx="4" fill="#94A3B8" opacity="0.6" />
-                                <rect x="320" y="60" width="40" height="30" rx="4" fill="#94A3B8" opacity="0.6" />
-                                
-                                {/* Jalan Rute (Garis Oranye Tebal) */}
-                                <path d="M80 120 L 160 160 L 260 100 L 320 140" stroke="#FF5A36" strokeWidth="5" strokeLinecap="round" strokeLinejoin="round" />
-                                <path d="M80 120 L 160 160 L 260 100 L 320 140" stroke="#FFA18D" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
-
-                                {/* Bangunan Toko (Start - Blue Pin) */}
-                                <g transform="translate(60, 90)">
-                                  <rect width="40" height="30" rx="6" fill="#0284C7" />
-                                  <text x="20" y="18" fill="white" fontSize="10" fontWeight="bold" textAnchor="middle">🏪</text>
-                                </g>
-
-                                {/* Bangunan Proyek (Tujuan - Orange Highlighted) */}
-                                <g transform="translate(300, 110)">
-                                  {/* Shadow Glow */}
-                                  <rect width="46" height="36" rx="8" fill="#FF5A36" className="animate-pulse" opacity="0.4" x="-3" y="-3" />
-                                  <rect width="40" height="30" rx="6" fill="#FF5A36" />
-                                  <text x="20" y="18" fill="white" fontSize="10" fontWeight="bold" textAnchor="middle">🏗️</text>
-                                </g>
-
-                                {/* Icon Driver Bergerak */}
-                                <g transform="translate(200, 120)">
-                                  <circle cx="10" cy="10" r="14" fill="white" filter="drop-shadow(0px 2px 4px rgba(0,0,0,0.1))" />
-                                  <text x="4" y="14" fontSize="11">🚛</text>
-                                </g>
-                              </svg>
-                            </div>
-
-                            <div className="flex gap-2 justify-end">
-                              <button onClick={() => { setCustomerLat(-6.205); setCustomerLng(106.815); }} className="text-[10px] bg-slate-200 hover:bg-slate-300 font-bold px-3 py-1.5 rounded-lg transition text-slate-600">📍 Set Utara</button>
-                              <button onClick={() => { setCustomerLat(-6.230); setCustomerLng(106.850); }} className="text-[10px] bg-slate-200 hover:bg-slate-300 font-bold px-3 py-1.5 rounded-lg transition text-slate-600">📍 Set Selatan</button>
-                            </div>
-                          </div>
-                        </div>
-                      </div>
-
-                      {/* Penjadwalan & Pembayaran */}
-                      <div className="bg-white rounded-[28px] shadow-sm p-5 border border-slate-100 grid grid-cols-1 md:grid-cols-2 gap-4">
-                        <div>
-                          <h3 className="font-extrabold text-slate-800 text-sm mb-3.5 flex items-center gap-2">
-                            <span>📅</span> Penjadwalan Proyek (Opsional)
-                          </h3>
-                          <div className="grid grid-cols-2 gap-3">
-                            <input 
-                              type="date" 
-                              value={deliveryDate}
-                              onChange={(e) => setDeliveryDate(e.target.value)}
-                              className="text-xs font-semibold bg-slate-50 border border-slate-200 rounded-xl p-3 focus:outline-none focus:ring-1 focus:ring-[#FF5A36]"
-                            />
-                            <input 
-                              type="time" 
-                              value={deliveryTime}
-                              onChange={(e) => setDeliveryTime(e.target.value)}
-                              className="text-xs font-semibold bg-slate-50 border border-slate-200 rounded-xl p-3 focus:outline-none focus:ring-1 focus:ring-[#FF5A36]"
-                            />
-                          </div>
-                        </div>
-
-                        <div>
-                          <h3 className="font-extrabold text-slate-800 text-sm mb-3.5 flex items-center gap-2">
-                            <span>💳</span> Metode Pembayaran (Escrow)
-                          </h3>
-                          <div className="grid grid-cols-2 gap-2">
-                            {[
-                              { id: 'transfer', name: 'Transfer VA', icon: '🏦' },
-                              { id: 'qris', name: 'QRIS Instant', icon: '📱' },
-                              { id: 'cod', name: 'COD Proyek', icon: '💵' },
-                              { id: 'tempo', name: 'Tempo B2B', icon: '🗓️' }
-                            ].map(pay => (
-                              <button
-                                key={pay.id}
-                                onClick={() => setPaymentMethod(pay.id)}
-                                className={`p-2.5 rounded-xl border text-[11px] font-bold flex items-center gap-2 justify-center transition-all ${
-                                  paymentMethod === pay.id ? 'border-[#FF5A36] bg-[#FF5A36]/5 text-[#FF5A36]' : 'border-slate-200 text-slate-600 hover:bg-slate-50'
-                                }`}
-                              >
-                                <span>{pay.icon}</span>
-                                <span>{pay.name}</span>
-                              </button>
-                            ))}
-                          </div>
-                        </div>
-                      </div>
-                    </>
-                  )}
+                  </div>
                 </div>
-              )}
 
-              {/* VIEW: ORDER STATUS TRACKING (DELIVERY TIMELINE STYLE) */}
-              {activeTab === 'orders' && (
-                <div className="flex flex-col gap-4">
-                  <h3 className="font-extrabold text-slate-800 text-lg flex items-center gap-2">
-                    <span>📦</span> Riwayat & Pelacakan Logistik Anda
-                  </h3>
-                  {orders.length === 0 ? (
-                    <div className="bg-white rounded-[28px] p-12 text-center border border-slate-100 shadow-sm">
-                      <p className="text-slate-400 text-xs">Belum ada transaksi aktif saat ini.</p>
+                {/* PACKAGE INFORMATION FORM */}
+                <div className="mb-5">
+                  <h4 className="text-[11px] font-black text-slate-400 uppercase tracking-wider mb-2 px-1">Package Information</h4>
+                  <div className="bg-white rounded-3xl p-4 shadow-sm border border-slate-100 space-y-3.5">
+                    
+                    {/* Weight Input */}
+                    <div>
+                      <label className="block text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-1.5">Weight</label>
+                      <select 
+                        value={weight}
+                        onChange={(e) => setWeight(e.target.value)}
+                        className="w-full text-xs font-bold text-slate-700 bg-slate-50 border border-slate-100 rounded-xl p-3 focus:outline-none"
+                      >
+                        <option>2.0 KG</option>
+                        <option>12.0 KG (Besi Beton)</option>
+                        <option>40.0 KG (Semen Gresik)</option>
+                        <option>1400.0 KG (Pasir Cor)</option>
+                      </select>
                     </div>
-                  ) : (
-                    orders.map(order => (
-                      <div key={order.id} className="bg-white rounded-[28px] border border-slate-100 shadow-sm p-6 flex flex-col gap-5">
-                        <div className="flex flex-wrap justify-between items-center gap-2 border-b border-slate-100 pb-4">
+
+                    {/* Size Input */}
+                    <div>
+                      <label className="block text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-1.5">Size</label>
+                      <select 
+                        value={size}
+                        onChange={(e) => setSize(e.target.value)}
+                        className="w-full text-xs font-bold text-slate-700 bg-slate-50 border border-slate-100 rounded-xl p-3 focus:outline-none"
+                      >
+                        <option>Medium (30x20x20 cm)</option>
+                        <option>Large (Semen Gresik)</option>
+                        <option>Super Heavy (Pasir Cor)</option>
+                      </select>
+                    </div>
+
+                    {/* Package Type Input */}
+                    <div>
+                      <label className="block text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-1.5">Package Type</label>
+                      <select 
+                        value={packageType}
+                        onChange={(e) => setPackageType(e.target.value)}
+                        className="w-full text-xs font-bold text-slate-700 bg-slate-50 border border-slate-100 rounded-xl p-3 focus:outline-none"
+                      >
+                        <option>Box</option>
+                        <option>Heavy Sack</option>
+                        <option>Dump Truck Cargo</option>
+                      </select>
+                    </div>
+
+                  </div>
+                </div>
+
+                {/* SELECT COURIER LIST */}
+                <div className="mb-5">
+                  <h4 className="text-[11px] font-black text-slate-400 uppercase tracking-wider mb-2 px-1">Select Courier</h4>
+                  <div className="space-y-2">
+                    {[
+                      { id: 'DHL Express', name: 'DHL Express', desc: 'Delivery within 6-7 Days', price: 'Rp 45.000', logo: '🇩🇭' },
+                      { id: 'FedEx', name: 'FedEx Express', desc: 'Delivery within 4-5 Days', price: 'Rp 60.000', logo: '🇫🇪' },
+                      { id: 'BahanBangunGo Logistik', name: 'BahanBangunGo Instant', desc: 'Kirim langsung hari ini', price: 'Rp 150.000', logo: '🚚' }
+                    ].map(item => (
+                      <button
+                        key={item.id}
+                        type="button"
+                        onClick={() => setCourier(item.id)}
+                        className={`w-full text-left bg-white rounded-2xl p-3.5 border flex items-center justify-between transition-all duration-300 ${
+                          courier === item.id 
+                            ? 'border-[#FF5A36] ring-1 ring-[#FF5A36]/40 shadow-md' 
+                            : 'border-slate-100 shadow-sm hover:border-slate-300'
+                        }`}
+                      >
+                        <div className="flex items-center gap-3">
+                          <span className="text-xl p-2 bg-slate-50 rounded-xl border border-slate-100">{item.logo}</span>
                           <div>
-                            <span className="text-xs font-black bg-slate-100 text-slate-700 px-3 py-1.5 rounded-full">{order.id}</span>
-                            <p className="text-[11px] text-slate-400 mt-2">Dipesan pada: {order.date}</p>
+                            <p className="text-xs font-black text-slate-800">{item.name}</p>
+                            <p className="text-[9px] text-slate-400 font-bold mt-0.5">{item.desc}</p>
                           </div>
-                          <span className="text-xs font-bold px-3 py-1.5 rounded-full bg-[#FF5A36]/10 text-[#FF5A36]">
-                            {order.status}
+                        </div>
+                        <div className="text-right">
+                          <span className="text-xs font-black text-[#FF5A36]">{item.price}</span>
+                          <span className={`block w-4 h-4 rounded-full border mt-1.5 ml-auto flex items-center justify-center ${
+                            courier === item.id ? 'border-[#FF5A36] bg-[#FF5A36]' : 'border-slate-300'
+                          }`}>
+                            {courier === item.id && <span className="w-1.5 h-1.5 rounded-full bg-white"></span>}
                           </span>
                         </div>
-
-                        {/* HIGH FIDELITY DELIVERY TRACKING TIMELINE (MIMIC SCREEN 3 OF IMAGE) */}
-                        <div className="bg-slate-50 rounded-2xl p-5 border border-slate-100">
-                          <div className="flex items-center gap-2 mb-4">
-                            <span className="text-xs bg-[#FF5A36] text-white px-2 py-0.5 rounded-md font-bold">In Transit</span>
-                            <span className="text-xs text-slate-400 font-bold">{order.id}</span>
-                          </div>
-
-                          {/* Stepper Logistik Vertikal */}
-                          <div className="relative pl-6 border-l-2 border-slate-200 space-y-6">
-                            
-                            {/* Step 1: Delivered */}
-                            <div className="relative">
-                              <span className={`absolute -left-8.5 top-0 w-5 h-5 rounded-full flex items-center justify-center text-[10px] ${
-                                order.status === 'Selesai' ? 'bg-emerald-500 text-white' : 'bg-slate-200 text-slate-400'
-                              }`}>✓</span>
-                              <div className="flex justify-between items-start text-xs">
-                                <div>
-                                  <p className="font-extrabold text-slate-800">Delivered</p>
-                                  <p className="text-[10px] text-slate-400 mt-0.5">Barang diturunkan & diterima di lokasi.</p>
-                                </div>
-                                <span className="text-[10px] text-slate-400 font-medium">Selesai</span>
-                              </div>
-                            </div>
-
-                            {/* Step 2: In Transit */}
-                            <div className="relative">
-                              <span className={`absolute -left-8.5 top-0 w-5 h-5 rounded-full flex items-center justify-center text-[10px] ${
-                                order.status === 'Dalam Perjalanan' || order.status === 'Selesai' ? 'bg-[#FF5A36] text-white' : 'bg-slate-200 text-slate-400'
-                              }`}>🚚</span>
-                              <div className="flex justify-between items-start text-xs">
-                                <div>
-                                  <p className="font-extrabold text-slate-800">Dalam Perjalanan (In Transit)</p>
-                                  <p className="text-[10px] text-slate-400 mt-0.5">{order.driverName || 'Menunggu Driver pickup.'}</p>
-                                </div>
-                                <span className="text-[10px] text-slate-400 font-medium">On-progress</span>
-                              </div>
-                            </div>
-
-                            {/* Step 3: Picked Up / Prepared */}
-                            <div className="relative">
-                              <span className={`absolute -left-8.5 top-0 w-5 h-5 rounded-full flex items-center justify-center text-[10px] ${
-                                order.status !== 'Menunggu Konfirmasi Admin' ? 'bg-[#FF5A36] text-white' : 'bg-slate-200 text-slate-400'
-                              }`}>🏪</span>
-                              <div className="flex justify-between items-start text-xs">
-                                <div>
-                                  <p className="font-extrabold text-slate-800">Disiapkan oleh Toko</p>
-                                  <p className="text-[10px] text-slate-400 mt-0.5">Mitra {order.merchant.name} sedang memuat barang.</p>
-                                </div>
-                                <span className="text-[10px] text-slate-400 font-medium">Ready</span>
-                              </div>
-                            </div>
-
-                          </div>
-                        </div>
-
-                        {/* Detail Alamat & Mitra Toko */}
-                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-xs">
-                          <div>
-                            <p className="text-slate-400 font-bold uppercase tracking-widest text-[9px]">Toko Penyuplai Utama</p>
-                            <p className="font-extrabold text-slate-800 mt-1">🏪 {order.merchant.name}</p>
-                            <p className="text-slate-500 font-medium">{order.merchant.distance} KM dari lokasi Anda</p>
-                          </div>
-                          <div>
-                            <p className="text-slate-400 font-bold uppercase tracking-widest text-[9px]">Alamat Drop-Off Proyek</p>
-                            <p className="font-extrabold text-slate-800 mt-1">📍 {order.address}</p>
-                            {order.addressDetails && <p className="text-slate-500 italic mt-0.5">"{order.addressDetails}"</p>}
-                          </div>
-                        </div>
-
-                        {/* List Barang */}
-                        <div className="bg-slate-50 rounded-xl p-4 text-xs">
-                          <p className="font-bold text-slate-700 mb-2">Item Material:</p>
-                          <ul className="space-y-1">
-                            {order.items.map(item => (
-                              <li key={item.id} className="flex justify-between font-medium">
-                                <span>{item.name} x{item.quantity}</span>
-                                <span>Rp {(item.price * item.quantity).toLocaleString('id-ID')}</span>
-                              </li>
-                            ))}
-                          </ul>
-                        </div>
-
-                        {/* Aksi Konfirmasi Penerimaan */}
-                        {order.status === 'Dalam Perjalanan' && (
-                          <div className="border-t border-slate-100 pt-3 flex justify-end">
-                            <button
-                              onClick={() => {
-                                setOrders(orders.map(o => o.id === order.id ? { ...o, status: 'Selesai' } : o));
-                              }}
-                              className="bg-emerald-600 hover:bg-emerald-700 text-white font-bold px-4 py-2.5 rounded-xl text-xs transition shadow-md shadow-emerald-600/10"
-                            >
-                              Konfirmasi Barang Diterima ✔️
-                            </button>
-                          </div>
-                        )}
-                      </div>
-                    ))
-                  )}
-                </div>
-              )}
-            </>
-          )}
-
-          {/* =======================================================
-              2. ADMIN PLATFORM VIEW (HUB & DISPATCHER)
-              ======================================================= */}
-          {role === 'admin' && (
-            <div className="flex flex-col gap-5">
-              <div className="flex justify-between items-center border-b border-slate-200 pb-3">
-                <h2 className="text-lg font-extrabold text-slate-800 flex items-center gap-2">
-                  <span>🛡️</span> Dashboard Admin Broker & Dispatcher
-                </h2>
-                <span className="bg-rose-500 text-white text-[10px] font-bold px-2.5 py-1 rounded-full animate-pulse flex items-center gap-1">
-                  🚨 SIRENE: {orders.filter(o => o.status === 'Menunggu Konfirmasi Admin').length} Antrean
-                </span>
-              </div>
-
-              {orders.length === 0 ? (
-                <div className="bg-white rounded-[28px] p-12 text-center border border-slate-150 shadow-sm">
-                  <p className="text-slate-400 text-xs">Belum ada pesanan masuk dari konsumen.</p>
-                </div>
-              ) : (
-                orders.map(order => (
-                  <div key={order.id} className="bg-white rounded-[28px] border border-slate-100 shadow-sm p-5 flex flex-col gap-4">
-                    <div className="flex justify-between items-start bg-slate-900 text-white p-4 rounded-2xl">
-                      <div>
-                        <span className="text-[10px] text-[#FF5A36] font-bold">INCOMING ORDER: {order.id}</span>
-                        <p className="text-xs font-semibold text-slate-300 mt-1">Waktu Kirim: {order.scheduledFor}</p>
-                      </div>
-                      <span className="text-[10px] font-bold bg-[#FF5A36] text-white px-2.5 py-1 rounded-lg">
-                        {order.status}
-                      </span>
-                    </div>
-
-                    {/* Informasi Fisik Pengapalan */}
-                    <div className="grid grid-cols-3 gap-3 bg-slate-50 p-4 rounded-2xl text-xs text-center border border-slate-100">
-                      <div>
-                        <p className="text-slate-400 font-bold uppercase tracking-widest text-[9px]">⚖️ Berat Muatan</p>
-                        <p className="font-extrabold text-slate-800 mt-1">{order.totalWeight} Kg</p>
-                      </div>
-                      <div>
-                        <p className="text-slate-400 font-bold uppercase tracking-widest text-[9px]">📐 Volume Muatan</p>
-                        <p className="font-extrabold text-slate-800 mt-1">{order.totalVolume.toFixed(3)} m³</p>
-                      </div>
-                      <div>
-                        <p className="text-slate-400 font-bold uppercase tracking-widest text-[9px]">🚚 Rekomendasi Armada</p>
-                        <p className="font-extrabold text-[#FF5A36] mt-1">{recommendedVehicle.name}</p>
-                      </div>
-                    </div>
-
-                    {/* Deteksi Status Overloading */}
-                    {order.totalWeight > recommendedVehicle.maxWeight && (
-                      <div className="bg-rose-50 border border-rose-100 rounded-xl p-3 text-xs text-rose-700 font-semibold flex items-center gap-2">
-                        ⚠️ WARNING ODOL: Berat barang melebihi kapasitas standar kendaraan yang direkomendasikan!
-                      </div>
-                    )}
-
-                    {/* Deteksi Split Order Requirement */}
-                    {order.isSplitNeeded && (
-                      <div className="bg-amber-50 border border-amber-100 rounded-xl p-3 text-xs text-amber-800 flex flex-col gap-1.5">
-                        <span className="font-bold">⚠️ SISTEM REKOMENDASI PECAH PESANAN (SPLIT ORDER):</span>
-                        <span>Stok tidak mencukupi 100% di satu toko terdekat. Admin disarankan membagi pesanan ini ke toko lain.</span>
-                      </div>
-                    )}
-
-                    {/* SMART PROXIMITY MATCH TABLE */}
-                    <div>
-                      <h4 className="font-bold text-slate-800 text-xs mb-2">💡 Algoritma Rekomendasi Penyedia Terdekat:</h4>
-                      <div className="overflow-x-auto">
-                        <table className="w-full text-xs text-left border border-slate-100 rounded-xl overflow-hidden">
-                          <thead className="bg-slate-100 text-slate-600 font-bold">
-                            <tr>
-                              <th className="p-3">Nama Toko</th>
-                              <th className="p-3">Jarak</th>
-                              <th className="p-3">Kecocokan Stok</th>
-                              <th className="p-3">Estimasi Ongkir</th>
-                              <th className="p-3 text-right">Aksi Dispatch</th>
-                            </tr>
-                          </thead>
-                          <tbody className="divide-y divide-slate-100">
-                            {getProximityRecommendations().map(rec => (
-                              <tr key={rec.id} className="hover:bg-slate-50 transition">
-                                <td className="p-3 font-bold text-slate-800">🏪 {rec.name}</td>
-                                <td className="p-3 font-semibold text-slate-600">{rec.distance} KM</td>
-                                <td className="p-3">
-                                  <span className={`font-bold ${rec.stockMatchPercent === 100 ? 'text-emerald-600' : 'text-amber-600'}`}>
-                                    {rec.stockMatchPercent}% Cocok
-                                  </span>
-                                </td>
-                                <td className="p-3 font-bold text-slate-800">Rp {rec.deliveryCost.toLocaleString('id-ID')}</td>
-                                <td className="p-3 text-right">
-                                  {order.status === 'Menunggu Konfirmasi Admin' ? (
-                                    <button
-                                      onClick={() => handleDispatchOrder(order.id, rec.id)}
-                                      className="bg-[#FF5A36] hover:bg-slate-950 text-white font-bold px-3 py-1.5 rounded-lg transition"
-                                    >
-                                      Kirim ➡️
-                                    </button>
-                                  ) : (
-                                    <span className="text-slate-400 italic">Diserahkan</span>
-                                  )}
-                                </td>
-                              </tr>
-                            ))}
-                          </tbody>
-                        </table>
-                      </div>
-                    </div>
-                  </div>
-                ))
-              )}
-            </div>
-          )}
-
-          {/* =======================================================
-              3. TOKO / MERCHANT VIEW
-              ======================================================= */}
-          {role === 'merchant' && (
-            <div className="flex flex-col gap-5">
-              <div className="flex justify-between items-center border-b border-slate-200 pb-3">
-                <h2 className="text-lg font-extrabold text-slate-800 flex items-center gap-2">
-                  <span>🏪</span> Panel Manajemen Mitra Toko
-                </h2>
-                <div className="flex gap-2">
-                  <button 
-                    onClick={() => setActiveTab('orders')} 
-                    className={`text-xs font-bold px-3 py-1.5 rounded-xl transition ${activeTab === 'orders' ? 'bg-slate-950 text-white' : 'bg-slate-100 text-slate-600'}`}
-                  >
-                    Antrean Masuk
-                  </button>
-                  <button 
-                    onClick={() => setActiveTab('inventory')} 
-                    className={`text-xs font-bold px-3 py-1.5 rounded-xl transition ${activeTab === 'inventory' ? 'bg-slate-950 text-white' : 'bg-slate-100 text-slate-600'}`}
-                  >
-                    Atur Inventaris & Stok
-                  </button>
-                </div>
-              </div>
-
-              {activeTab === 'orders' && (
-                <div className="flex flex-col gap-4">
-                  {orders.filter(o => o.status === 'Disiapkan oleh Toko' && o.merchant.id === 'm1').length === 0 ? (
-                    <div className="bg-white rounded-[28px] p-12 text-center border border-slate-150 shadow-sm">
-                      <p className="text-slate-400 text-xs">Tidak ada pesanan aktif yang ditugaskan ke toko Anda saat ini.</p>
-                    </div>
-                  ) : (
-                    orders.filter(o => o.status === 'Disiapkan oleh Toko' && o.merchant.id === 'm1').map(order => (
-                      <div key={order.id} className="bg-white border border-slate-100 shadow-sm rounded-2xl p-5 flex flex-col gap-4">
-                        <div className="flex justify-between items-center border-b border-slate-100 pb-2">
-                          <span className="font-bold text-slate-800 text-sm">ORDER ID: {order.id}</span>
-                          <span className="bg-blue-100 text-blue-800 text-xs font-bold px-2.5 py-1 rounded-full">Siapkan Barang</span>
-                        </div>
-                        
-                        {/* List Pengemasan */}
-                        <div className="text-xs text-slate-700 bg-slate-50 p-4 rounded-xl border border-slate-100">
-                          <p className="font-bold text-slate-800 mb-2">📋 Daftar Material yang Harus Dikemas:</p>
-                          <ul className="space-y-1">
-                            {order.items.map(item => (
-                              <li key={item.id} className="flex justify-between items-center py-1">
-                                <span className="font-medium">📦 {item.name}</span>
-                                <span className="font-extrabold bg-white px-2 py-0.5 rounded border border-slate-200 text-slate-900">{item.quantity} {item.unit}</span>
-                              </li>
-                            ))}
-                          </ul>
-                        </div>
-
-                        {/* Assign Courier & Dispatch */}
-                        <div className="flex justify-between items-center pt-2">
-                          <div className="text-xs text-slate-500">
-                            <p>Penyiapan Logistik: <b>Armada {recommendedVehicle.name}</b></p>
-                            <p className="text-[10px] text-slate-400 mt-0.5">Driver: {order.driverName}</p>
-                          </div>
-                          <button
-                            onClick={() => handleMerchantReady(order.id)}
-                            className="bg-emerald-600 hover:bg-emerald-700 text-white font-bold px-4 py-2.5 rounded-xl text-xs transition"
-                          >
-                            Siap Kirim & Panggil Driver! 🚀
-                          </button>
-                        </div>
-                      </div>
-                    ))
-                  )}
-                </div>
-              )}
-
-              {activeTab === 'inventory' && (
-                <div className="bg-white rounded-[28px] border border-slate-100 shadow-sm p-5">
-                  <h3 className="font-bold text-slate-800 text-sm mb-4">Atur Ketersediaan & Stok Produk Mitra:</h3>
-                  <div className="space-y-3">
-                    {products.map(p => (
-                      <div key={p.id} className="flex items-center justify-between border-b border-slate-100 pb-3 last:border-0 last:pb-0">
-                        <div className="flex items-center gap-2">
-                          <span className="text-2xl">{p.image}</span>
-                          <div>
-                            <p className="font-bold text-slate-800 text-xs">{p.name}</p>
-                            <p className="text-[10px] text-slate-400">Rp {p.price.toLocaleString('id-ID')}</p>
-                          </div>
-                        </div>
-                        <div className="flex items-center gap-3">
-                          <span className="text-xs text-slate-500">Stok Toko:</span>
-                          <input 
-                            type="number" 
-                            value={p.stock}
-                            onChange={(e) => {
-                              const newStock = parseInt(e.target.value) || 0;
-                              setProducts(products.map(prod => prod.id === p.id ? { ...prod, stock: newStock } : prod));
-                            }}
-                            className="w-16 text-center text-xs border border-slate-200 rounded p-1 font-bold focus:ring-1 focus:ring-[#FF5A36]"
-                          />
-                          {p.stock <= 30 && (
-                            <span className="bg-rose-100 text-rose-800 text-[9px] font-bold px-1.5 py-0.5 rounded animate-pulse">Low Stock</span>
-                          )}
-                        </div>
-                      </div>
+                      </button>
                     ))}
                   </div>
                 </div>
-              )}
+
+                {/* SUBMIT BUTTON */}
+                <button
+                  onClick={handleCreateShipment}
+                  className="w-full bg-slate-950 text-white hover:bg-[#FF5A36] py-3.5 rounded-2xl font-black text-xs transition duration-300 shadow-lg shadow-slate-950/10 flex items-center justify-center gap-2 mt-4"
+                >
+                  Create Shipment 🚀
+                </button>
+
+              </div>
+
+              {/* HOME INDICATOR */}
+              <div className="w-32 h-1 bg-slate-300 rounded-full mx-auto mt-2 mb-1"></div>
+
             </div>
-          )}
+          </div>
 
           {/* =======================================================
-              4. DRIVER / KURIR VIEW
+              DEVICE 2: HOME DASHBOARD HUB
               ======================================================= */}
-          {role === 'driver' && (
-            <div className="flex flex-col gap-5">
-              <div className="flex justify-between items-center border-b border-slate-200 pb-3">
-                <h2 className="text-lg font-extrabold text-slate-800 flex items-center gap-2">
-                  <span>🚛</span> Aplikasi Pengantaran Driver
-                </h2>
-                <span className="bg-emerald-600 text-white text-xs font-bold px-2.5 py-1 rounded-full">Driver Online</span>
-              </div>
-
-              {orders.filter(o => o.status === 'Dalam Perjalanan').length === 0 ? (
-                <div className="bg-white rounded-[28px] p-12 text-center border border-slate-150 shadow-sm">
-                  <p className="text-slate-400 text-xs">Belum ada tugas penjemputan barang saat ini. Tetap bersiap di armada Anda!</p>
-                </div>
-              ) : (
-                orders.filter(o => o.status === 'Dalam Perjalanan').map(order => (
-                  <div key={order.id} className="bg-white border border-slate-100 shadow-sm rounded-2xl p-5 flex flex-col gap-4">
-                    <div className="bg-slate-900 text-white p-4 rounded-xl flex justify-between items-center">
-                      <div>
-                        <p className="text-xs font-bold text-[#FF5A36]">ORDER ANTAR: {order.id}</p>
-                        <p className="text-[10px] text-slate-300">Hub: {order.merchant.name}</p>
-                      </div>
-                      <span className="text-xs bg-[#FF5A36] text-white px-2 py-0.5 rounded font-bold">AKTIF</span>
-                    </div>
-
-                    {/* Navigasi Alamat Pickup & Drop-off */}
-                    <div className="relative pl-6 space-y-4 text-xs before:absolute before:left-2.5 before:top-2 before:bottom-2 before:w-0.5 before:bg-dashed before:bg-slate-300">
-                      <div className="relative">
-                        <span className="absolute -left-5 bg-blue-100 text-blue-800 w-4 h-4 rounded-full flex items-center justify-center text-[9px] font-extrabold">A</span>
-                        <p className="font-semibold text-slate-400 uppercase tracking-wider text-[9px]">Titik Penjemputan (Pick-Up)</p>
-                        <p className="font-bold text-slate-800 mt-0.5">🏪 {order.merchant.name}</p>
-                      </div>
-                      <div className="relative">
-                        <span className="absolute -left-5 bg-amber-100 text-amber-800 w-4 h-4 rounded-full flex items-center justify-center text-[9px] font-extrabold">B</span>
-                        <p className="font-semibold text-slate-400 uppercase tracking-wider text-[9px]">Titik Pengiriman Proyek (Drop-Off)</p>
-                        <p className="font-bold text-slate-800 mt-0.5">📍 {order.address}</p>
-                        {order.addressDetails && <p className="text-slate-500 italic mt-0.5">"{order.addressDetails}"</p>}
-                      </div>
-                    </div>
-
-                    {/* FOTO PROOF OF DELIVERY & TTD DIGITAL */}
-                    <div className="border-t border-slate-100 pt-4 flex flex-col gap-4">
-                      <h4 className="font-bold text-slate-800 text-sm flex items-center gap-1.5">
-                        <span>📸</span> Bukti Penerimaan Pengiriman (PoD):
-                      </h4>
-
-                      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                        {/* Unggah Foto Material */}
-                        <div className="bg-slate-50 border border-slate-200 rounded-2xl p-4 flex flex-col items-center justify-center text-center relative overflow-hidden aspect-video">
-                          {podPhoto ? (
-                            <>
-                              <img src={podPhoto} alt="POD Material" className="absolute inset-0 w-full h-full object-cover" />
-                              <button 
-                                onClick={() => setPodPhoto(null)} 
-                                className="absolute top-2 right-2 bg-rose-500 text-white rounded-full p-1.5 text-xs font-bold hover:bg-rose-600 shadow"
-                              >
-                                Hapus 🗑️
-                              </button>
-                            </>
-                          ) : (
-                            <div className="flex flex-col items-center">
-                              <span className="text-3xl block mb-1">🏗️</span>
-                              <p className="text-xs font-bold text-slate-700">Foto Material Turun dari Truk</p>
-                              <button 
-                                onClick={simulatePodPhotoUpload}
-                                className="mt-3 bg-slate-900 text-white hover:bg-[#FF5A36] text-xs font-bold px-3 py-1.5 rounded-lg transition"
-                              >
-                                Ambil Foto Simulasi 📷
-                              </button>
-                            </div>
-                          )}
-                        </div>
-
-                        {/* Canvas Tanda Tangan Digital */}
-                        <div className="bg-slate-50 border border-slate-200 rounded-2xl p-4 flex flex-col justify-between">
-                          <div>
-                            <p className="text-xs font-bold text-slate-700">Tanda Tangan Digital Konsumen</p>
-                          </div>
-
-                          <div className="my-2 bg-white border border-slate-200 rounded-xl relative overflow-hidden aspect-video">
-                            <canvas
-                              ref={canvasRef}
-                              onMouseDown={startDrawing}
-                              onMouseMove={draw}
-                              onMouseUp={stopDrawing}
-                              onMouseLeave={stopDrawing}
-                              onTouchStart={startDrawing}
-                              onTouchMove={draw}
-                              onTouchEnd={stopDrawing}
-                              className="w-full h-full cursor-crosshair block"
-                            />
-                            {signatureSaved && (
-                              <div className="absolute inset-0 bg-emerald-500/10 flex items-center justify-center pointer-events-none">
-                                <span className="bg-emerald-600 text-white text-[10px] font-bold px-2 py-1 rounded-full shadow">TTD Terkunci ✔️</span>
-                              </div>
-                            )}
-                          </div>
-
-                          <div className="flex gap-2 justify-end">
-                            <button onClick={clearSignature} className="text-[10px] font-bold text-rose-500 hover:underline">Hapus TTD</button>
-                            <button onClick={saveSignature} className="text-[10px] font-bold text-emerald-600 hover:underline">Kunci TTD</button>
-                          </div>
-                        </div>
-                      </div>
-
-                      {/* Selesaikan Tugas */}
-                      <button
-                        onClick={() => handleCompleteDelivery(order.id)}
-                        disabled={!podPhoto || !signatureSaved}
-                        className={`w-full py-3 rounded-2xl font-bold text-sm transition text-center flex items-center justify-center gap-2 ${
-                          podPhoto && signatureSaved 
-                            ? 'bg-emerald-600 hover:bg-emerald-700 text-white cursor-pointer shadow-md' 
-                            : 'bg-slate-200 text-slate-400 cursor-not-allowed'
-                        }`}
-                      >
-                        <span>✔️</span> Selesaikan Pengantaran
-                      </button>
-                    </div>
-                  </div>
-                ))
-              )}
-            </div>
-          )}
-
-        </div>
-
-        {/* SISI KANAN: CHAT REAL-TIME SIMULATOR & RINGKASAN */}
-        <div className="lg:col-span-4 flex flex-col gap-5">
-          
-          {/* USER PROFILE INFO HEADER CARD (MIMIC SCREEN 2 HEADER) */}
-          <div className="bg-white rounded-[28px] border border-slate-150 p-4 flex items-center justify-between shadow-sm">
-            <div className="flex items-center gap-3">
-              <div className="w-11 h-11 rounded-full bg-[#FF5A36] text-white flex items-center justify-center text-lg font-bold">
-                DS
-              </div>
-              <div>
-                <h4 className="font-extrabold text-sm text-slate-900">D. Stwaret</h4>
-                <p className="text-[10px] text-slate-400 font-medium">📍 4291 Ashford Drive, JKT</p>
-              </div>
-            </div>
-            <button className="w-9 h-9 rounded-full bg-slate-50 border border-slate-100 flex items-center justify-center text-sm shadow-sm">
-              🔔
-            </button>
-          </div>
-
-          {/* BOX 1: REAL-TIME CHAT SIMULATOR */}
-          <div className="bg-white border border-slate-150 rounded-[28px] shadow-sm flex flex-col h-[340px] overflow-hidden">
-            <div className="bg-slate-900 text-white p-4 flex justify-between items-center">
-              <div className="flex items-center gap-2">
-                <span className="w-2.5 h-2.5 rounded-full bg-emerald-500 animate-pulse"></span>
-                <div>
-                  <h3 className="font-extrabold text-xs">CS Hub & Konsolidator</h3>
-                  <p className="text-[9px] text-slate-400 font-medium">Aktif berkoordinasi langsung</p>
-                </div>
-              </div>
-              <span className="text-[10px] font-bold bg-slate-800 text-slate-300 px-2 py-0.5 rounded-md">Live Chat</span>
-            </div>
-
-            {/* Area Pesan Chat */}
-            <div className="flex-1 p-4 overflow-y-auto space-y-3 bg-slate-50 text-xs">
-              {chats.map((chat, idx) => (
-                <div key={idx} className={`flex flex-col ${chat.sender === role ? 'items-end' : 'items-start'}`}>
-                  <span className="text-[9px] text-slate-400 font-bold px-1 capitalize">{chat.sender}</span>
-                  <div className={`p-3 rounded-2xl max-w-[80%] mt-0.5 shadow-sm ${
-                    chat.sender === role 
-                      ? 'bg-[#FF5A36] text-white rounded-tr-none font-bold' 
-                      : 'bg-white text-slate-800 rounded-tl-none border border-slate-100'
-                  }`}>
-                    {chat.text}
-                  </div>
-                  <span className="text-[8px] text-slate-400 mt-1 px-1">{chat.timestamp}</span>
-                </div>
-              ))}
-            </div>
-
-            {/* Input Chat */}
-            <div className="p-3 border-t border-slate-100 bg-white flex gap-2 items-center">
-              <input 
-                type="text" 
-                placeholder={`Tulis balasan sebagai ${role}...`}
-                value={newMsg}
-                onChange={(e) => setNewMsg(e.target.value)}
-                onKeyDown={(e) => e.key === 'Enter' && handleSendChat()}
-                className="flex-1 text-xs bg-slate-50 border border-slate-200 rounded-xl px-4 py-3 focus:outline-none focus:ring-1 focus:ring-[#FF5A36]"
-              />
-              <button 
-                onClick={handleSendChat}
-                className="bg-slate-900 text-white hover:bg-[#FF5A36] font-bold px-4 py-3 rounded-xl text-xs transition"
-              >
-                Kirim
-              </button>
-            </div>
-          </div>
-
-          {/* BOX 2: INFORMASI RINGKASAN BELANJA & KALKULATOR INSTANT */}
-          {role === 'customer' && cart.length > 0 && (
-            <div className="bg-white border border-slate-150 rounded-[28px] shadow-sm p-5 flex flex-col gap-4">
-              <h3 className="font-extrabold text-slate-800 text-sm border-b border-slate-100 pb-2">
-                🏷️ Ringkasan Belanja Proyek
-              </h3>
+          <div className={`${activeDevice === 'home' ? 'flex' : 'hidden lg:flex'} flex-col items-center`}>
+            <span className="hidden lg:block text-[11px] font-black text-slate-500 uppercase tracking-widest mb-3">Screen 2: Home Dashboard</span>
+            
+            {/* DEVICE MOCKUP CASE */}
+            <div className="w-[360px] h-[750px] bg-[#F4F3F2] rounded-[48px] p-3.5 shadow-[0_32px_64px_rgba(0,0,0,0.18)] border-[10px] border-white/95 relative flex flex-col justify-between overflow-hidden">
               
-              <div className="text-xs text-slate-600 space-y-2">
-                <div className="flex justify-between">
-                  <span>Subtotal Material</span>
-                  <span className="font-bold text-slate-900">Rp {cartTotalPrice.toLocaleString('id-ID')}</span>
+              {/* STATUS BAR */}
+              <div className="w-full flex justify-between items-center px-6 pt-1 text-xs font-semibold text-slate-800">
+                <span>9:41</span>
+                <div className="w-16 h-4 bg-slate-950 rounded-full absolute left-1/2 transform -translate-x-1/2 top-3"></div>
+                <div className="flex items-center gap-1.5">
+                  <span>📶</span>
+                  <span>🔋</span>
                 </div>
-                <div className="flex justify-between">
-                  <span>Ongkos Kirim ({recommendedVehicle.name})</span>
-                  <span className="font-bold text-slate-900">Rp {rawDeliveryCost.toLocaleString('id-ID')}</span>
-                </div>
+              </div>
+
+              {/* SCREEN CONTENT AREA (SCROLLABLE) */}
+              <div className="flex-1 overflow-y-auto px-4 pb-4 scrollbar-none">
                 
-                {/* OPSI ADD-ONS */}
-                <div className="border-t border-slate-100 my-2 pt-3">
-                  <p className="font-extrabold text-slate-700 text-xs mb-2">Kustom Layanan Pengiriman:</p>
-                  
-                  <div className="space-y-2 text-slate-600">
-                    <label className="flex items-center gap-2 cursor-pointer font-semibold">
-                      <input 
-                        type="checkbox" 
-                        checked={selectedAddons.helper}
-                        onChange={(e) => setSelectedAddons({ ...selectedAddons, helper: e.target.checked })}
-                        className="rounded text-[#FF5A36] focus:ring-[#FF5A36] w-4 h-4"
-                      />
-                      <span>Jasa Kuli Bongkar (+Rp50rb)</span>
-                    </label>
-                    {selectedAddons.helper && (
-                      <div className="flex items-center gap-2 pl-6">
-                        <span className="text-[10px] text-slate-400">Jumlah helper:</span>
-                        <input 
-                          type="number" 
-                          min="1" 
-                          max="10"
-                          value={helperCount}
-                          onChange={(e) => setHelperCount(parseInt(e.target.value) || 1)}
-                          className="w-12 text-center border rounded p-1 text-[10px]"
-                        />
-                      </div>
-                    )}
+                {/* PROFILE HEADER CARD (MIMIC PIC 2) */}
+                <div className="flex justify-between items-center mb-5 mt-4">
+                  <div className="flex items-center gap-3">
+                    <div className="w-10 h-10 rounded-full bg-slate-200 border border-slate-300/60 overflow-hidden flex items-center justify-center font-bold text-xs text-slate-800">
+                      👤
+                    </div>
+                    <div>
+                      <h4 className="font-black text-slate-900 text-xs leading-none">D. Stwaret</h4>
+                      <p className="text-[9px] text-slate-400 font-bold mt-1.5">📍 4291 Ashford Drive</p>
+                    </div>
+                  </div>
+                  <button className="w-9 h-9 rounded-full bg-white border border-slate-100 flex items-center justify-center text-slate-600 shadow-sm relative">
+                    <span className="text-sm">🔔</span>
+                    <span className="absolute top-2 right-2 w-1.5 h-1.5 rounded-full bg-[#FF5A36]"></span>
+                  </button>
+                </div>
 
-                    <label className="flex items-center gap-2 cursor-pointer font-semibold">
-                      <input 
-                        type="checkbox" 
-                        checked={selectedAddons.tol}
-                        onChange={(e) => setSelectedAddons({ ...selectedAddons, tol: e.target.checked })}
-                        className="rounded text-[#FF5A36] focus:ring-[#FF5A36] w-4 h-4"
-                      />
-                      <span>Lewat Jalan Tol Flat (+Rp30rb)</span>
-                    </label>
+                {/* SEARCH BAR (MIMIC PIC 2) */}
+                <div className="bg-white rounded-2xl p-2 shadow-sm border border-slate-100 flex items-center justify-between gap-2 mb-5">
+                  <div className="flex items-center gap-2.5 flex-1 px-2">
+                    <span className="text-slate-400 text-sm">🔍</span>
+                    <input 
+                      type="text" 
+                      placeholder="Search or scan your shipment..." 
+                      value={searchQuery}
+                      onChange={(e) => setSearchQuery(e.target.value)}
+                      className="text-xs bg-transparent border-0 w-full focus:outline-none font-bold text-slate-800 placeholder:text-slate-400"
+                    />
+                  </div>
+                  <button className="w-8 h-8 rounded-xl bg-slate-50 flex items-center justify-center text-xs text-slate-500 border border-slate-100 font-bold">
+                    [||]
+                  </button>
+                </div>
 
-                    <label className="flex items-center gap-2 cursor-pointer font-semibold">
-                      <input 
-                        type="checkbox" 
-                        checked={selectedAddons.terpal}
-                        onChange={(e) => setSelectedAddons({ ...selectedAddons, terpal: e.target.checked })}
-                        className="rounded text-[#FF5A36] focus:ring-[#FF5A36] w-4 h-4"
-                      />
-                      <span>Gunakan Penutup Terpal Hujan (+Rp25rb)</span>
-                    </label>
+                {/* QUICK ACTIONS BUTTONS (MIMIC PIC 2) */}
+                <div className="grid grid-cols-4 gap-2.5 mb-5">
+                  {[
+                    { label: 'Create', icon: '📦', action: () => setActiveDevice('create') },
+                    { label: 'Calculate', icon: '🧮', action: () => triggerToast("Directing to cargo rate calculator...") },
+                    { label: 'Receipts', icon: '📝', action: () => triggerToast("Loading invoice list...") },
+                    { label: 'Live Track', icon: '🛣️', action: () => setActiveDevice('tracking') }
+                  ].map((act, i) => (
+                    <button 
+                      key={i} 
+                      onClick={act.action}
+                      className="bg-white hover:bg-slate-50 border border-slate-100 rounded-2xl p-3.5 flex flex-col items-center justify-center text-center transition shadow-sm"
+                    >
+                      <span className="text-xl mb-1.5">{act.icon}</span>
+                      <span className="text-[9px] font-black text-slate-500 tracking-tight">{act.label}</span>
+                    </button>
+                  ))}
+                </div>
+
+                {/* MINI ISOMETRIC MAP HIGHLIGHT (MIMIC PIC 2 CENTER) */}
+                <div className="bg-white rounded-3xl p-3.5 shadow-sm border border-slate-100 mb-5 overflow-hidden">
+                  <div className="flex justify-between items-start mb-2">
+                    <div>
+                      <span className="text-[9px] font-black bg-rose-500/10 text-rose-500 px-2 py-0.5 rounded-md">Live Status</span>
+                      <h4 className="font-extrabold text-[11px] text-slate-800 mt-1">Current Delivery: {activeOrder.id}</h4>
+                    </div>
+                    <span className="text-[10px] font-black text-[#FF5A36] bg-[#FF5A36]/10 px-2.5 py-0.5 rounded-full">{activeOrder.status}</span>
+                  </div>
+
+                  {/* MINI ISOMETRIC CITY SVG RENDER */}
+                  <div className="w-full h-24 bg-slate-100 rounded-2xl relative overflow-hidden border border-slate-150">
+                    <svg className="absolute inset-0 w-full h-full" viewBox="0 0 300 100" fill="none" xmlns="http://www.w3.org/2000/svg">
+                      <path d="M0 25L300 75M0 50L300 100M0 75L300 125" stroke="#CBD5E1" strokeWidth="0.8" />
+                      <path d="M0 75L300 25M0 100L300 50M0 125L300 75" stroke="#CBD5E1" strokeWidth="0.8" />
+                      
+                      {/* Stylized Flat Grid Buildings */}
+                      <rect x="20" y="30" width="15" height="20" rx="2" fill="#E2E8F0" />
+                      <rect x="250" y="20" width="18" height="15" rx="2" fill="#E2E8F0" />
+                      
+                      {/* Rute Orange */}
+                      <path d="M50 60 L 140 70 L 140 40 L 220 50" stroke="#FF5A36" strokeWidth="3.5" strokeLinecap="round" strokeLinejoin="round" />
+                      
+                      {/* Orange Highlighted Building (Gedung Utama Terang di Tengah) */}
+                      <g transform="translate(130, 25)">
+                        <polygon points="10,0 20,5 10,10 0,5" fill="#FFA18D" />
+                        <polygon points="0,5 10,10 10,25 0,20" fill="#E04F30" />
+                        <polygon points="10,10 20,5 20,20 10,25" fill="#FF5A36" />
+                        <circle cx="10" cy="5" r="2.5" fill="#FFFFFF" className="animate-ping" />
+                      </g>
+                    </svg>
+                    <button 
+                      onClick={() => setActiveDevice('tracking')}
+                      className="absolute bottom-2 right-2 w-7 h-7 rounded-lg bg-slate-950 text-white flex items-center justify-center text-xs shadow hover:bg-[#FF5A36] transition"
+                    >
+                      ↗
+                    </button>
                   </div>
                 </div>
-              </div>
 
-              {/* Total Final */}
-              <div className="border-t border-slate-100 pt-4 flex justify-between items-center">
-                <div>
-                  <p className="text-[9px] text-slate-400 uppercase tracking-widest font-bold">Total Pembayaran</p>
-                  <p className="font-black text-slate-950 text-lg">Rp {grandTotal.toLocaleString('id-ID')}</p>
+                {/* DELIVERY HISTORY LIST */}
+                <div className="mb-2">
+                  <div className="flex justify-between items-center mb-3">
+                    <h4 className="text-[11px] font-black text-slate-400 uppercase tracking-wider px-1">Delivery History</h4>
+                    <button onClick={() => triggerToast("Opening full list of history...")} className="text-[10px] font-bold text-slate-400 hover:text-slate-800 transition">See all</button>
+                  </div>
+
+                  {/* CARDS LIST */}
+                  <div className="space-y-2.5">
+                    {filteredDeliveries.length === 0 ? (
+                      <p className="text-[11px] text-slate-400 text-center py-4 italic">No shipments match your search.</p>
+                    ) : (
+                      filteredDeliveries.map(item => (
+                        <button
+                          key={item.id}
+                          onClick={() => {
+                            setSelectedId(item.id);
+                            triggerToast(`Selected ${item.id} for tracking.`);
+                          }}
+                          className={`w-full text-left bg-white rounded-2xl p-3.5 border flex items-center justify-between transition-all ${
+                            selectedId === item.id 
+                              ? 'border-[#FF5A36] ring-1 ring-[#FF5A36]/20' 
+                              : 'border-slate-100 hover:border-slate-300'
+                          }`}
+                        >
+                          <div className="flex items-center gap-3">
+                            <span className="text-xl p-2 bg-[#F4F3F2] rounded-xl">📦</span>
+                            <div>
+                              <p className="text-xs font-black text-slate-800">{item.id}</p>
+                              <p className="text-[9px] text-slate-400 font-bold mt-1">Transit on {item.date}</p>
+                            </div>
+                          </div>
+                          
+                          <span className={`text-[9px] font-black px-2.5 py-1 rounded-md ${
+                            item.status === 'Delivered' 
+                              ? 'bg-emerald-50 text-emerald-600' 
+                              : 'bg-orange-50 text-[#FF5A36]'
+                          }`}>
+                            {item.status}
+                          </span>
+                        </button>
+                      ))
+                    )}
+                  </div>
                 </div>
-                <button
-                  onClick={handleCheckout}
-                  className="bg-[#FF5A36] hover:bg-slate-900 text-white font-bold px-4 py-3 rounded-xl text-xs transition shadow-md shadow-[#FF5A36]/10"
-                >
-                  Bayar & Teruskan 🚀
-                </button>
-              </div>
-            </div>
-          )}
 
-          {/* BOX 3: MATRIKS ODOL & PARAMETER ARMADA */}
-          <div className="bg-white border border-slate-150 rounded-[28px] shadow-sm p-5 text-xs">
-            <h3 className="font-extrabold text-slate-800 text-sm mb-3 border-b border-slate-100 pb-2 flex items-center gap-1.5">
-              <span>⚖️</span> Kapasitas Angkut Armada (Anti-ODOL)
-            </h3>
-            <ul className="space-y-2 text-slate-500 font-semibold">
-              {VEHICLE_TYPES.map(v => (
-                <li key={v.id} className="flex justify-between items-center">
-                  <span>{v.icon} {v.name}</span>
-                  <span className="font-bold text-slate-800">Maks {v.maxWeight >= 1000 ? (v.maxWeight / 1000) + ' Ton' : v.maxWeight + ' Kg'}</span>
-                </li>
-              ))}
-            </ul>
+              </div>
+
+              {/* BOTTOM INTERACTIVE NAVIGATION BAR (MIMIC PIC 2 FOOTER) */}
+              <div className="bg-white rounded-3xl p-2 border border-slate-100 shadow-sm flex justify-around items-center mb-2">
+                {[
+                  { label: 'Home', icon: '🏠', active: activeDevice === 'home', action: () => setActiveDevice('home') },
+                  { label: 'Package', icon: '📦', active: activeDevice === 'create', action: () => setActiveDevice('create') },
+                  { label: 'Chat', icon: '💬', active: false, action: () => triggerToast("Loading live chat help...") },
+                  { label: 'Profile', icon: '👤', active: false, action: () => triggerToast("Redirecting to profile card...") }
+                ].map((tab, i) => (
+                  <button
+                    key={i}
+                    onClick={tab.action}
+                    className={`flex flex-col items-center justify-center flex-1 py-1 transition-all ${
+                      tab.active ? 'text-[#FF5A36]' : 'text-slate-400 hover:text-slate-800'
+                    }`}
+                  >
+                    <span className="text-lg">{tab.icon}</span>
+                    <span className="text-[8px] font-bold mt-0.5">{tab.label}</span>
+                  </button>
+                ))}
+              </div>
+
+              {/* HOME INDICATOR */}
+              <div className="w-32 h-1 bg-slate-300 rounded-full mx-auto mt-1 mb-1"></div>
+
+            </div>
+          </div>
+
+          {/* =======================================================
+              DEVICE 3: DELIVERY TRACKING PREVIEW
+              ======================================================= */}
+          <div className={`${activeDevice === 'tracking' ? 'flex' : 'hidden lg:flex'} flex-col items-center`}>
+            <span className="hidden lg:block text-[11px] font-black text-slate-500 uppercase tracking-widest mb-3">Screen 3: Delivery Tracking</span>
+            
+            {/* DEVICE MOCKUP CASE */}
+            <div className="w-[360px] h-[750px] bg-[#F4F3F2] rounded-[48px] p-3.5 shadow-[0_32px_64px_rgba(0,0,0,0.18)] border-[10px] border-white/95 relative flex flex-col justify-between overflow-hidden">
+              
+              {/* STATUS BAR */}
+              <div className="w-full flex justify-between items-center px-6 pt-1 text-xs font-semibold text-slate-800 z-10">
+                <span>9:41</span>
+                <div className="w-16 h-4 bg-slate-950 rounded-full absolute left-1/2 transform -translate-x-1/2 top-3"></div>
+                <div className="flex items-center gap-1.5">
+                  <span>📶</span>
+                  <span>🔋</span>
+                </div>
+              </div>
+
+              {/* MAIN CONTENT WORKSPACE (INTEGRATED MAP + BOTTOM CARD OVERLAY) */}
+              <div className="flex-1 flex flex-col relative -mt-5">
+                
+                {/* BACK BUTTON AND MAP HEADER ACTIONS OVERLAY */}
+                <div className="absolute top-8 left-4 right-4 z-10 flex justify-between items-center">
+                  <button onClick={() => setActiveDevice('home')} className="w-9 h-9 rounded-full bg-white border border-slate-200/60 flex items-center justify-center text-xs font-bold text-slate-700 shadow-sm hover:bg-slate-50 transition">
+                    ‹
+                  </button>
+                  <h3 className="font-extrabold text-sm text-slate-900 tracking-tight bg-white/70 backdrop-blur-md px-4 py-1.5 rounded-full shadow-sm border border-white/40">Delivery Tracking</h3>
+                  <button className="w-9 h-9 rounded-full bg-white border border-slate-200/60 flex items-center justify-center text-slate-700 shadow-sm font-black">
+                    •••
+                  </button>
+                </div>
+
+                {/* INTERACTIVE FULL-WIDTH ISOMETRIC CITY MAP (MIMIC PIC 3) */}
+                <div className="w-full h-80 bg-slate-200 relative overflow-hidden">
+                  <svg className="absolute inset-0 w-full h-full scale-[1.1]" viewBox="0 0 360 320" fill="none" xmlns="http://www.w3.org/2000/svg">
+                    {/* Grid-lines isometris kota */}
+                    <path d="M0 50L360 200M0 100L360 250M0 150L360 300M0 200L360 350" stroke="#CBD5E1" strokeWidth="0.8" />
+                    <path d="M0 200L360 50M0 250L360 100M0 300L360 150M0 350L360 200" stroke="#CBD5E1" strokeWidth="0.8" />
+                    
+                    {/* Grayscale Buildings (Simulasi gedung 3D di peta) */}
+                    <rect x="40" y="80" width="30" height="40" rx="3" fill="#E2E8F0" />
+                    <rect x="280" y="90" width="25" height="35" rx="3" fill="#E2E8F0" />
+                    <rect x="310" y="160" width="20" height="30" rx="3" fill="#D1D5DB" />
+                    <rect x="50" y="220" width="25" height="25" rx="3" fill="#E2E8F0" />
+                    
+                    {/* RUTE UTAMA ORANYE (DARI ASAL KE TUJUAN) */}
+                    <path d="M70 180 L 160 220 L 160 140 L 250 170" stroke="#FF5A36" strokeWidth="5.5" strokeLinecap="round" strokeLinejoin="round" />
+                    <path d="M70 180 L 160 220 L 160 140 L 250 170" stroke="#FFFFFF" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
+
+                    {/* Gedung Oranye Glowing Terang (Tujuan Paket - Target Destinasi) */}
+                    <g transform="translate(235, 125)">
+                      <polygon points="15,0 30,7 15,14 0,7" fill="#FFA18D" />
+                      <polygon points="0,7 15,14 15,35 0,28" fill="#E04F30" />
+                      <polygon points="15,14 30,7 30,28 15,35" fill="#FF5A36" />
+                      {/* Anchor pin */}
+                      <circle cx="15" cy="7" r="4" fill="#FFFFFF" className="animate-pulse" />
+                    </g>
+
+                    {/* Pin Rumah/Home kecil di atas gedung target */}
+                    <g transform="translate(242, 100)">
+                      <rect width="16" height="16" rx="8" fill="#111827" />
+                      <text x="8" y="12" fill="white" fontSize="9" textAnchor="middle" fontWeight="bold">🏠</text>
+                    </g>
+
+                    {/* Mobil Box Kurir Logistik Bergerak */}
+                    <g transform="translate(145, 160)" className="animate-bounce">
+                      <circle cx="15" cy="15" r="16" fill="white" filter="drop-shadow(0px 4px 6px rgba(0,0,0,0.15))" />
+                      <text x="8" y="20" fontSize="13">🚚</text>
+                    </g>
+                  </svg>
+                </div>
+
+                {/* OVERLAY CARD DETAIL TRACKING (MIMIC PIC 3 BOTTOM CARDS) */}
+                <div className="bg-white rounded-t-[40px] shadow-[0_-20px_40px_rgba(0,0,0,0.08)] border-t border-slate-100 flex-1 px-5 pt-5 pb-2 flex flex-col justify-between -mt-10 z-20">
+                  
+                  {/* Pull-up bar indicator */}
+                  <div className="w-12 h-1 bg-slate-200 rounded-full mx-auto mb-4"></div>
+
+                  {/* Active Order ID header block */}
+                  <div className="text-center">
+                    <span className="inline-flex items-center gap-1.5 text-[10px] font-black bg-[#FF5A36]/10 text-[#FF5A36] px-3 py-1.5 rounded-full mb-1">
+                      <span>🚚</span> {activeOrder.status}
+                    </span>
+                    <h2 className="text-xl font-black text-slate-900 tracking-tight">{activeOrder.id}</h2>
+                    <p className="text-[10px] text-slate-400 font-bold uppercase tracking-wider mt-0.5">Transit on {activeOrder.date}</p>
+                  </div>
+
+                  {/* HIGH FIDELITY VERTICAL TIMELINE LOGISTICS STEPPER */}
+                  <div className="my-4 overflow-y-auto max-h-[190px] pr-1 scrollbar-none">
+                    <div className="relative pl-7 border-l-2 border-slate-100 space-y-4 ml-3">
+                      
+                      {activeOrder.timeline.map((step, idx) => (
+                        <div key={idx} className="relative">
+                          
+                          {/* Circle indicators */}
+                          <span className={`absolute -left-9.5 top-0.5 w-5 h-5 rounded-full border-[3px] flex items-center justify-center transition-all ${
+                            step.completed 
+                              ? 'border-slate-900 bg-slate-900' 
+                              : 'border-slate-200 bg-white'
+                          }`}>
+                            {step.completed && (
+                              <svg className="w-2.5 h-2.5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="4" d="M5 13l4 4L19 7"></path>
+                              </svg>
+                            )}
+                          </span>
+
+                          <div className="flex justify-between items-start text-xs">
+                            <div>
+                              <p className={`font-black ${step.completed ? 'text-slate-900' : 'text-slate-400'}`}>
+                                {step.label}
+                              </p>
+                              <p className="text-[9px] text-slate-400 font-medium mt-0.5">{step.time}</p>
+                            </div>
+                            <span className="text-[9px] text-slate-400 font-semibold">{step.location}</span>
+                          </div>
+                        </div>
+                      ))}
+
+                    </div>
+                  </div>
+
+                  {/* ACTION ROW FOOTER BUTTONS (MIMIC PIC 3 FOOTER) */}
+                  <div className="flex gap-2 items-center mb-1">
+                    <button 
+                      onClick={() => triggerToast("Directing support agent call...")}
+                      className="flex-1 bg-slate-950 text-white hover:bg-[#FF5A36] py-3 rounded-full font-black text-[11px] transition duration-300 shadow-md shadow-slate-950/10"
+                    >
+                      Contract Support
+                    </button>
+                    <button onClick={() => triggerToast("Starting live chat room...")} className="w-11 h-11 rounded-full bg-slate-100 border border-slate-200 flex items-center justify-center text-sm shadow-sm hover:bg-slate-200 transition">
+                      💬
+                    </button>
+                    <button onClick={() => triggerToast("Opening direct driver call...")} className="w-11 h-11 rounded-full bg-slate-100 border border-slate-200 flex items-center justify-center text-sm shadow-sm hover:bg-slate-200 transition">
+                      📞
+                    </button>
+                  </div>
+
+                </div>
+
+              </div>
+
+              {/* HOME INDICATOR */}
+              <div className="w-32 h-1 bg-slate-300 rounded-full mx-auto mt-1 mb-1"></div>
+
+            </div>
           </div>
 
         </div>
 
-      </main>
+      </div>
 
       {/* FOOTER */}
-      <footer className="bg-slate-950 text-white border-t border-slate-900 py-8 mt-12">
-        <div className="max-w-7xl mx-auto px-4 text-center text-xs text-slate-500 space-y-1.5">
-          <p className="font-bold">© 2026 BahanBangunGo - Logistik Bahan Bangunan Terintegrasi.</p>
-          <p>Didesain secara khusus untuk portofolio premium di GitHub & Hosting Vercel.</p>
-        </div>
+      <footer className="w-full max-w-7xl text-center text-[10px] text-slate-500 font-bold uppercase tracking-widest mt-12 mb-2">
+        <p>© 2026 BahanBangunGo Ltd. All rights reserved.</p>
+        <p className="text-[#FF5A36] mt-1 normal-case font-medium">Rendered with extreme performance and premium precision.</p>
       </footer>
 
     </div>
