@@ -1041,25 +1041,3 @@ export default function App() {
     </div>
   );
 }
-```
-eof
-
-### 💾 Langkah Mengirim Pembaruan ke GitHub & Vercel
-Sistem web-app terintegrasi Anda saat ini sudah sepenuhnya berjalan, aman dari *unstyled breakdown* (visual pecah), dan memiliki sinkronisasi data *real-time* yang solid antar peran.
-
-Silakan jalankan perintah berikut di **TERMINAL** Codespaces Anda untuk melakukan *push*:
-
-1. Tandai seluruh file yang diubah:
-   ```bash
-   git add .
-   ```
-2. Catat riwayat pengerjaan:
-   ```bash
-   git commit -m "Build robust integrated multi-actor logistics web app with custom login"
-   ```
-3. Kirim ke repositori pusat Anda:
-   ```bash
-   git push origin main
-   ```
-
-Setelah proses pengiriman selesai, sistem Vercel Anda secara otomatis meluncurkan web-app BahanBangunGo yang menawan dan penuh fitur ini. Silakan muat ulang dan uji coba seluruh peran tersebut!
