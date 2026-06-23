@@ -1,139 +1,84 @@
 import React, { useState, useEffect, useRef } from 'react';
 
-const INITIAL_SHIPMENTS = [
-  {
-    id: 'BBG-998122',
-    item: '20 Sak Semen Gresik (1 Ton)',
-    sender: 'Depo Pusat Cengkareng, Jakarta Barat',
-    receiver: 'Proyek Cluster Harmoni, Tangerang',
-    status: 'Dalam Perjalanan',
-    statusDetail: 'Kurir sedang menuju lokasi proyek melalui jalan Tol Jakarta-Tangerang.',
-    driver: 'Pak Rudi Santoso',
-    fleet: 'Truk Engkel CDE',
-    progress: 65,
-    eta: '45 Menit',
-    weight: 1000,
-    volume: 0.7,
-    date: '23 Juni 2026',
-    history: [
-      { status: 'Pesanan Dibuat', time: '10:00 AM', desc: 'Sistem mengunci pembayaran escrow.' },
-      { status: 'Dikonfirmasi', time: '10:15 AM', desc: 'Merchant menyiapkan material semen.' },
-      { status: 'Picked Up', time: '11:00 AM', desc: 'Semen dimuat ke armada CDE.' },
-      { status: 'Dalam Perjalanan', time: '11:30 AM', desc: 'Truk melintasi tol Jakarta-Tangerang.' }
-    ]
-  },
-  {
-    id: 'BBG-776655',
-    item: 'Pasir Cor Merapi (1.5 m³)',
-    sender: 'Depo Tambang Merak, Banten',
-    receiver: 'Gudang Konstruksi Sudirman, Jakarta Selatan',
-    status: 'Disiapkan oleh Toko',
-    statusDetail: 'Barang sedang dimuat ke dalam armada dump truck.',
-    driver: 'Pak Budi Wijaya',
-    fleet: 'Truk Double CDD',
-    progress: 25,
-    eta: '2 Jam 15 Menit',
-    weight: 2100,
-    volume: 1.5,
-    date: '23 Juni 2026',
-    history: [
-      { status: 'Pesanan Dibuat', time: '09:00 AM', desc: 'Pesanan masuk ke sistem antrean.' },
-      { status: 'Disiapkan oleh Toko', time: '09:30 AM', desc: 'Alat berat mulai memuat pasir.' }
-    ]
-  },
-  {
-    id: 'BBG-112233',
-    item: 'Besi Beton SNI 10mm (50 Batang)',
-    sender: 'Pabrik Baja Cilegon, Serang',
-    receiver: 'Pembangunan Ruko Daan Mogot, Jakarta Barat',
-    status: 'Selesai',
-    statusDetail: 'Barang telah diterima oleh Bp. Ahmad (Kepala Tukang).',
-    driver: 'Pak Aris Nugroho',
-    fleet: 'Truk Double CDD',
-    progress: 100,
-    eta: 'Tiba di Lokasi',
-    weight: 600,
-    volume: 0.25,
-    date: '22 Juni 2026',
-    history: [
-      { status: 'Pesanan Dibuat', time: 'Yesterday', desc: 'Transaksi tervalidasi.' },
-      { status: 'Disiapkan oleh Toko', time: 'Yesterday', desc: 'Besi beton diikat aman.' },
-      { status: 'Dalam Perjalanan', time: 'Yesterday', desc: 'Perjalanan lancar via arteri.' },
-      { status: 'Selesai', time: 'Yesterday', desc: 'Diterima & TTD digital diverifikasi.' }
-    ]
-  }
+const INITIAL_PRODUCTS = [
+  { id: 'p1', name: 'Semen Gresik SNI 40kg', category: 'Semen', price: 58000, stock: 450, unit: 'Sak', weight: 40, volume: 0.028, image: '🧱' },
+  { id: 'p2', name: 'Pasir Cor Gunung Merapi', category: 'Pasir', price: 340000, stock: 45, unit: 'm³', weight: 1400, volume: 1.0, image: '⏳' },
+  { id: 'p3', name: 'Besi Beton Ulir 12mm', category: 'Besi', price: 112000, stock: 600, unit: 'Batang', weight: 10.5, volume: 0.004, image: '⛓️' },
+  { id: 'p4', name: 'Cat Tembok Jotun Shield 20L', category: 'Cat', price: 820000, stock: 85, unit: 'Pail', weight: 24, volume: 0.02, image: '🎨' },
+  { id: 'p5', name: 'Batu Kali Pondasi Belah', category: 'Pasir', price: 290000, stock: 30, unit: 'm³', weight: 1600, volume: 1.0, image: '🪨' },
 ];
 
-const DEPOT_OUTLETS = [
-  { region: 'Jakarta', name: 'Hub Utama Jakarta Barat - Cengkareng', address: 'Jl. Lingkar Luar No. 45, Cengkareng', tel: '+62 21-5544-3322' },
-  { region: 'Jakarta', name: 'Hub Jakarta Timur - Cakung', address: 'Kawasan Industri Pulogadung Blok C, Cakung', tel: '+62 21-5544-7788' },
-  { region: 'Tangerang', name: 'Hub Tangerang Raya - Batuceper', address: 'Jl. Pembangunan III No. 12, Batuceper', tel: '+62 21-5577-9911' },
-  { region: 'Bekasi', name: 'Hub Bekasi - Tambun', address: 'Jl. Sultan Hasanuddin No. 88, Tambun Selatan', tel: '+62 21-8899-2211' },
-  { region: 'Bandung', name: 'Hub Priangan - Soekarno Hatta', address: 'Jl. Soekarno-Hatta No. 624, Bandung', tel: '+62 22-7788-5544' }
+const INITIAL_MERCHANTS = [
+  { id: 'm1', name: 'TB. Maju Jaya Sentosa - Cengkareng', lat: -6.210, lng: 106.820, stock: { p1: 300, p2: 20, p3: 400, p4: 50, p5: 15 }, rating: 4.8 },
+  { id: 'm2', name: 'Depo Bangunan Sejahtera - Tangerang', lat: -6.225, lng: 106.840, stock: { p1: 150, p2: 25, p3: 200, p4: 35, p5: 15 }, rating: 4.6 },
 ];
 
-const PRODUCT_CATEGORIES = [
-  { id: 'semen', name: 'Semen', icon: '🧱', count: '12 Varian' },
-  { id: 'pasir', name: 'Pasir & Kerikil', icon: '⏳', count: '5 Jenis' },
-  { id: 'besi', name: 'Besi & Baja', icon: '⛓️', count: '18 Ukuran' },
-  { id: 'cat', name: 'Cat & Pelapis', icon: '🎨', count: '24 Warna' },
-  { id: 'alat', name: 'Alat Berat', icon: '🚜', count: '4 Armada' }
+const FLEET_TYPES = [
+  { id: 'pickup', name: 'Mobil Pick-Up (L300)', maxWeight: 1500, baseFare: 75000, perKm: 5000, icon: '🛻' },
+  { id: 'engkel', name: 'Truk Engkel CDE', maxWeight: 3000, baseFare: 150000, perKm: 8000, icon: '🚚' },
+  { id: 'double', name: 'Truk Double CDD', maxWeight: 7000, baseFare: 250000, perKm: 12000, icon: '🚛' },
 ];
 
 const SLIDER_PHOTOS = [
-  {
-    id: 1,
-    title: 'PAKET BESAR & MATERIAL PROYEK, CARI BAHANBANGUNGO!',
-    desc: 'Pengiriman semen curah, pasir tambang, dan besi beton struktural dijamin aman dengan perlindungan anti-ODOL serta sistem lacak GPS real-time.',
-    badge: '⚡ CARGO PREMIUM',
-    bgGradient: 'linear-gradient(135deg, #004d34 0%, #00805a 100%)'
-  },
-  {
-    id: 2,
-    title: '👑 REGISTRASI VIP CLIENT UNTUK KONTRAKTOR PROYEK',
-    desc: 'Nikmati kemudahan pembayaran termin (Tempo 30 Hari), diskon tarif pengiriman flat-rate 10%, serta fasilitas bebas biaya kuli bongkar di lokasi.',
-    badge: '💎 MEMBER B2B',
-    bgGradient: 'linear-gradient(135deg, #0f172a 0%, #1e293b 100%)'
-  },
-  {
-    id: 3,
-    title: '🛠️ KEAMANAN MUATAN PRIORITAS JALAN RAYA',
-    desc: 'Sistem logistik kami dilengkapi kecerdasan konversi berat-volume otomatis untuk merekomendasikan armada yang tepat sesuai regulasi jalan raya nasional.',
-    badge: '🛡️ GARANSI ANTI-ODOL',
-    bgGradient: 'linear-gradient(135deg, #78350f 0%, #b45309 100%)'
-  }
+  { id: 1, title: 'KEMUDAHAN TRANSAKSI ESCROW B2B PROYEK', desc: 'Jaminan keamanan dana 100% dengan pencairan bertahap setelah penandatanganan Bukti Digital PoD.', bgGradient: 'linear-gradient(135deg, #004d34 0%, #00805a 100%)' },
+  { id: 2, title: 'ARMADA TANGGUH BEBAS ODOL JALAN RAYA', desc: 'Sistem pintar kami secara otomatis mengonversi berat dan dimensi guna merekomendasikan truk yang aman.', bgGradient: 'linear-gradient(135deg, #0f172a 0%, #1e293b 100%)' }
 ];
 
 export default function App() {
-  const [activeTab, setActiveTab] = useState('dashboard'); // dashboard | tracking | price | outlet | simulator
-  const [shipments, setShipments] = useState(INITIAL_SHIPMENTS);
-  const [selectedShipmentId, setSelectedShipmentId] = useState('BBG-998122');
-  const [searchTrackingId, setSearchTrackingId] = useState('BBG-998122');
-  const [activeRole, setActiveRole] = useState('customer'); // customer | merchant | driver
+  const [role, setRole] = useState('customer'); // customer | admin | merchant | driver
+  const [activeTab, setActiveTab] = useState('dashboard'); // dashboard | browse | cart | orders | chat
   
-  // Carousel Slider State
-  const [currentSlide, setCurrentSlide] = useState(0);
+  // Database State
+  const [products, setProducts] = useState(INITIAL_PRODUCTS);
+  const [merchants, setMerchants] = useState(INITIAL_MERCHANTS);
+  const [orders, setOrders] = useState([
+    {
+      id: 'BBG-998122',
+      date: '23 Juni 2026',
+      scheduledFor: 'Segera Kirim (Instant)',
+      items: [{ id: 'p1', name: 'Semen Gresik SNI 40kg', price: 58000, quantity: 20, unit: 'Sak', weight: 40, volume: 0.028 }],
+      totalWeight: 800,
+      totalVolume: 0.56,
+      subtotal: 1160000,
+      deliveryCost: 195000,
+      addonCost: 50000,
+      grandTotal: 1405000,
+      address: 'Proyek Cluster Harmoni, Tangerang',
+      status: 'Dalam Perjalanan',
+      driverName: 'Pak Rudi (Armada Truk Engkel CDE)',
+      merchantId: 'm1',
+      proofOfDelivery: null,
+      signature: null,
+      history: [
+        { status: 'Pesanan Dibuat', time: '10:00 AM', desc: 'Sistem mengunci pembayaran escrow.' },
+        { status: 'Dikonfirmasi', time: '10:15 AM', desc: 'Toko memvalidasi ketersediaan semen.' },
+        { status: 'Picked Up', time: '11:00 AM', desc: 'Material dimuat ke armada CDE.' }
+      ]
+    }
+  ]);
 
-  // State untuk Kalkulator Tarif (Cek Harga)
-  const [calcWeight, setCalcWeight] = useState(1500); // dalam Kg
-  const [calcVolume, setCalcVolume] = useState(1.2); // dalam m³
-  const [calcDistance, setCalcDistance] = useState(25); // dalam Km
-  const [calcFleet, setCalcFleet] = useState('engkel'); // pickup | engkel | double
-  const [helperService, setHelperService] = useState(true);
-  const [calculatedPrice, setCalculatedPrice] = useState(0);
-  const [odolAlert, setOdolAlert] = useState(false);
+  // Customer Shopping States
+  const [cart, setCart] = useState([]);
+  const [customerLat, setCustomerLat] = useState(-6.214);
+  const [customerLng, setCustomerLng] = useState(106.825);
+  const [shippingAddress, setShippingAddress] = useState('Proyek Konstruksi Jl. Jend. Sudirman Kav 21, Jakarta');
+  const [selectedAddons, setSelectedAddons] = useState({ helper: false, tol: false, terpal: false });
+  const [helperCount, setHelperCount] = useState(1);
 
-  // State untuk Pencarian Outlet
-  const [selectedRegion, setSelectedRegion] = useState('Jakarta');
-
-  // State untuk Registrasi VIP Client
-  const [showVipModal, setShowVipModal] = useState(false);
-  const [vipForm, setVipForm] = useState({ company: '', pic: '', phone: '', address: '' });
-
-  // State Toast Pemberitahuan
+  // Chat & Notifications States
+  const [chats, setChats] = useState([
+    { id: 1, sender: 'admin', text: 'Halo! Selamat datang di Portal BahanBangunGo. Ada yang bisa dibantu?', timestamp: '15:30' }
+  ]);
+  const [newMsg, setNewMsg] = useState('');
+  const [notifications, setNotifications] = useState([
+    { id: 1, text: 'Sistem Siap: Selamat datang di web-app BahanBangunGo Cargo!' }
+  ]);
   const [toastMessage, setToastMessage] = useState(null);
 
-  // State Tanda Tangan Driver (Canvas)
+  // Carousel State
+  const [currentSlide, setCurrentSlide] = useState(0);
+
+  // Signature Canvas States
   const canvasRef = useRef(null);
   const [isDrawing, setIsDrawing] = useState(false);
   const [signatureSaved, setSignatureSaved] = useState(false);
@@ -146,79 +91,114 @@ export default function App() {
     return () => clearInterval(timer);
   }, []);
 
-  useEffect(() => {
-    let baseFare = 150000;
-    let ratePerKm = 8000;
-    let maxCapacity = 3000; // Default Truk Engkel CDE
-
-    if (calcFleet === 'pickup') {
-      baseFare = 75000;
-      ratePerKm = 5000;
-      maxCapacity = 1500;
-    } else if (calcFleet === 'double') {
-      baseFare = 250000;
-      ratePerKm = 12000;
-      maxCapacity = 7000;
-    }
-
-    // Hitung total tarif
-    let total = baseFare + (calcDistance * ratePerKm);
-    if (helperService) total += 50000; // Biaya kuli bongkar flat rate
-
-    setCalculatedPrice(total);
-
-    // Deteksi ODOL (Over Dimension Over Loading)
-    if (calcWeight > maxCapacity) {
-      setOdolAlert(true);
-    } else {
-      setOdolAlert(false);
-    }
-  }, [calcWeight, calcVolume, calcDistance, calcFleet, helperService]);
-
-  // Trigger Notifikasi Toast
   const triggerToast = (msg) => {
     setToastMessage(msg);
-    setTimeout(() => setToastMessage(null), 3500);
+    setTimeout(() => setToastMessage(null), 3000);
   };
 
-  // Mencari Detail Shipments berdasarkan ID
-  const searchedShipment = shipments.find(
-    s => s.id.toLowerCase().trim() === searchTrackingId.toLowerCase().trim()
-  );
+  const addNotification = (text) => {
+    setNotifications(prev => [{ id: Date.now(), text }, ...prev]);
+  };
 
-  const handleSimulateProgress = () => {
-    setShipments(prev => prev.map(s => {
-      if (s.id === selectedShipmentId) {
-        if (s.progress >= 100) {
-          triggerToast(`Muatan ${s.id} sudah selesai dikirim.`);
-          return s;
-        }
-        const nextProgress = Math.min(s.progress + 25, 100);
-        let nextStatus = s.status;
-        let nextDetail = s.statusDetail;
+  const cartTotalWeight = cart.reduce((acc, item) => acc + (item.weight * item.quantity), 0);
+  const cartTotalVolume = cart.reduce((acc, item) => acc + (item.volume * item.quantity), 0);
+  const cartTotalPrice = cart.reduce((acc, item) => acc + (item.price * item.quantity), 0);
 
-        if (nextProgress === 100) {
-          nextStatus = 'Selesai';
-          nextDetail = 'Muatan telah sukses diserahterimakan dan ditandatangani.';
-        } else if (nextProgress > 75) {
-          nextStatus = 'Dalam Perjalanan';
-          nextDetail = 'Kurir telah keluar tol dan memasuki rute jalan raya kota tujuan.';
-        } else if (nextProgress > 50) {
-          nextStatus = 'Dalam Perjalanan';
-          nextDetail = 'Kurir sedang berada di rest area tol KM 57.';
-        }
+  // Rekomendasi armada logistik yang cocok berdasarkan berat muatan
+  const recommendedFleet = FLEET_TYPES.find(f => cartTotalWeight <= f.maxWeight) || FLEET_TYPES[2];
 
-        const newHistory = [...s.history, {
-          status: nextStatus,
-          time: new Date().toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit' }),
-          desc: nextDetail
-        }];
+  const getDistance = (lat1, lon1, lat2, lon2) => {
+    const R = 6371; // Jari-jari bumi dalam km
+    const dLat = (lat2 - lat1) * Math.PI / 180;
+    const dLon = (lon2 - lon1) * Math.PI / 180;
+    const a = Math.sin(dLat/2) * Math.sin(dLat/2) +
+              Math.cos(lat1 * Math.PI / 180) * Math.cos(lat2 * Math.PI / 180) * Math.sin(dLon/2) * Math.sin(dLon/2);
+    const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a));
+    return parseFloat((R * c).toFixed(1));
+  };
 
-        triggerToast(`Status logistik ${s.id} berhasil diperbarui!`);
-        return { ...s, progress: nextProgress, status: nextStatus, statusDetail: nextDetail, eta: nextProgress === 100 ? 'Tiba' : s.eta, history: newHistory };
+  const activeDistance = getDistance(customerLat, customerLng, merchants[0].lat, merchants[0].lng);
+  const rawDeliveryCost = Math.round(recommendedFleet.baseFare + (activeDistance * recommendedFleet.perKm));
+  const addonCost = (selectedAddons.helper ? helperCount * 75000 : 0) + (selectedAddons.tol ? 35000 : 0) + (selectedAddons.terpal ? 20000 : 0);
+  const grandTotal = cartTotalPrice + rawDeliveryCost + addonCost;
+
+  const addToCart = (product) => {
+    const existing = cart.find(item => item.id === product.id);
+    if (existing) {
+      if (existing.quantity < product.stock) {
+        setCart(cart.map(item => item.id === product.id ? { ...item, quantity: item.quantity + 1 } : item));
+        triggerToast(`${product.name} kuantitas ditambah.`);
+      } else {
+        triggerToast('Stok merchant tidak mencukupi.');
       }
-      return s;
+    } else {
+      setCart([...cart, { ...product, quantity: 1 }]);
+      triggerToast(`${product.name} dimasukkan ke keranjang.`);
+    }
+  };
+
+  const updateCartQty = (id, newQty) => {
+    if (newQty <= 0) {
+      setCart(cart.filter(item => item.id !== id));
+    } else {
+      setCart(cart.map(item => item.id === id ? { ...item, quantity: newQty } : item));
+    }
+  };
+
+  const handleCheckout = () => {
+    if (cart.length === 0) return;
+    const orderId = 'BBG-' + Math.floor(100000 + Math.random() * 900000);
+    const newOrder = {
+      id: orderId,
+      date: '23 Juni 2026',
+      scheduledFor: 'Segera Kirim (Instant)',
+      items: [...cart],
+      totalWeight: cartTotalWeight,
+      totalVolume: cartTotalVolume,
+      subtotal: cartTotalPrice,
+      deliveryCost: rawDeliveryCost,
+      addonCost,
+      grandTotal,
+      address: shippingAddress,
+      status: 'Menunggu Konfirmasi Admin',
+      driverName: null,
+      merchantId: 'm1',
+      proofOfDelivery: null,
+      signature: null,
+      history: [
+        { status: 'Pesanan Dibuat', time: 'Just Now', desc: 'Transaksi berhasil dikunci dalam sistem escrow.' }
+      ]
+    };
+
+    setOrders([newOrder, ...orders]);
+    setCart([]);
+    addNotification(`Pesanan Baru Terbuat! ID: ${orderId}. Menunggu konfirmasi admin.`);
+    triggerToast('Pesanan berhasil dibuat! Dana Anda aman dalam Escrow.');
+    setActiveTab('orders');
+  };
+
+  const handleAdminApprove = (orderId) => {
+    setOrders(orders.map(o => {
+      if (o.id === orderId) {
+        const history = [...o.history, { status: 'Dikonfirmasi', time: 'Just Now', desc: 'Admin menyetujui transaksi dan mengirim tugas ke Toko.' }];
+        return { ...o, status: 'Disiapkan oleh Toko', history };
+      }
+      return o;
     }));
+    addNotification(`Pesanan ${orderId} telah disetujui & dialokasikan ke TB. Maju Jaya Sentosa.`);
+    triggerToast('Pesanan disetujui admin!');
+  };
+
+  const handleMerchantReady = (orderId) => {
+    setOrders(orders.map(o => {
+      if (o.id === orderId) {
+        const history = [...o.history, { status: 'Picked Up', time: 'Just Now', desc: 'Barang selesai dikemas & diserahkan kepada Driver.' }];
+        return { ...o, status: 'Dalam Perjalanan', driverName: 'Pak Rudi (Armada Truk Engkel CDE)', history };
+      }
+      return o;
+    }));
+    addNotification(`Pesanan ${orderId} selesai dikemas. Driver dalam perjalanan.`);
+    triggerToast('Status diperbarui: Dalam Perjalanan!');
   };
 
   const startDrawing = (e) => {
@@ -227,14 +207,12 @@ export default function App() {
     const ctx = canvas.getContext('2d');
     ctx.lineWidth = 3;
     ctx.lineCap = 'round';
-    ctx.strokeStyle = '#0f172a';
+    ctx.strokeStyle = '#00805a';
     const rect = canvas.getBoundingClientRect();
     const clientX = e.clientX || (e.touches && e.touches[0].clientX);
     const clientY = e.clientY || (e.touches && e.touches[0].clientY);
-    const x = clientX - rect.left;
-    const y = clientY - rect.top;
     ctx.beginPath();
-    ctx.moveTo(x, y);
+    ctx.moveTo(clientX - rect.left, clientY - rect.top);
     setIsDrawing(true);
   };
 
@@ -245,49 +223,74 @@ export default function App() {
     const rect = canvas.getBoundingClientRect();
     const clientX = e.clientX || (e.touches && e.touches[0].clientX);
     const clientY = e.clientY || (e.touches && e.touches[0].clientY);
-    const x = clientX - rect.left;
-    const y = clientY - rect.top;
-    ctx.lineTo(x, y);
+    ctx.lineTo(clientX - rect.left, clientY - rect.top);
     ctx.stroke();
   };
 
   const saveSignature = () => {
     setSignatureSaved(true);
-    triggerToast('Tanda tangan digital penerima berhasil dikunci!');
+    triggerToast('Tanda tangan berhasil dikunci!');
   };
 
-  const handleCompleteDelivery = (shipmentId) => {
-    setShipments(prev => prev.map(s => {
-      if (s.id === shipmentId) {
+  const clearSignature = () => {
+    const canvas = canvasRef.current;
+    if (canvas) {
+      const ctx = canvas.getContext('2d');
+      ctx.clearRect(0, 0, canvas.width, canvas.height);
+      setSignatureSaved(false);
+    }
+  };
+
+  const handleDriverDeliver = (orderId) => {
+    setOrders(orders.map(o => {
+      if (o.id === orderId) {
+        const history = [...o.history, { status: 'Selesai', time: 'Just Now', desc: 'Barang diterima & diverifikasi lewat PoD Digital.' }];
         return {
-          ...s,
+          ...o,
           status: 'Selesai',
-          statusDetail: 'Selesai. Barang diterima dengan baik di lokasi proyek.',
-          progress: 100,
-          eta: 'Tiba',
-          history: [...s.history, { status: 'Selesai', time: 'Just Now', desc: 'Diterima oleh kepala proyek.' }]
+          proofOfDelivery: podPhoto || 'https://images.unsplash.com/photo-1590069261209-f8e9b8642343?auto=format&fit=crop&w=600&q=80',
+          signature: 'SIGNED_OK',
+          history
         };
       }
-      return s;
+      return o;
     }));
     setPodPhoto(null);
     setSignatureSaved(false);
-    triggerToast(`Pengiriman ${shipmentId} sukses diselesaikan! Dana Escrow dicairkan.`);
+    addNotification(`Pesanan ${orderId} telah selesai dikirim! Dana Escrow dicairkan.`);
+    triggerToast('Pesanan berhasil diselesaikan!');
+  };
+
+  const handleSendChat = () => {
+    if (!newMsg.trim()) return;
+    const timeNow = new Date().toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit' });
+    const userMsg = { id: Date.now(), sender: role, text: newMsg, timestamp: timeNow };
+    setChats(prev => [...prev, userMsg]);
+    setNewMsg('');
+
+    // Simulated Auto-Reply
+    setTimeout(() => {
+      setChats(prev => [...prev, {
+        id: Date.now() + 1,
+        sender: 'admin',
+        text: 'Terima kasih atas pesannya. CS kami sedang mengonfirmasi data logistik Anda.',
+        timestamp: timeNow
+      }]);
+    }, 1500);
   };
 
   return (
     <div className="bbg-dashboard-wrapper">
       
       {/* ==========================================
-          FALLBACK DESKRIPSI GAYA VISUAL (EMBEDDED STYLE ENGINE)
-          Mencegah visual pecah atau polos di Vercel/Codespaces
+          EMBEDDED STYLE ENGINE (PREVENTS BROKEN RENDER ON DEPLOY)
           ========================================== */}
       <style>{`
-        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Poppins:wght@600;700;800&display=swap');
+        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Poppins:wght@600;700;800&family=Open+Sans:wght@400;600&display=swap');
         
         .bbg-dashboard-wrapper {
           font-family: 'Inter', sans-serif;
-          background-color: #f1f5f9;
+          background-color: #f8fafc;
           color: #1e293b;
           min-height: 100vh;
           display: flex;
@@ -298,9 +301,13 @@ export default function App() {
           font-family: 'Poppins', sans-serif;
         }
 
-        /* Sidebar Styling */
+        p, span, label, input, select, button, td, th {
+          font-family: 'Inter', sans-serif;
+        }
+
+        /* Responsive Sidebar */
         .bbg-sidebar {
-          width: 260px;
+          width: 280px;
           background-color: #0f172a;
           color: #f8fafc;
           display: flex;
@@ -310,7 +317,7 @@ export default function App() {
           min-height: 100vh;
           position: sticky;
           top: 0;
-          transition: all 0.3s ease;
+          z-index: 50;
         }
 
         .bbg-brand-logo {
@@ -320,7 +327,7 @@ export default function App() {
           display: flex;
           align-items: center;
           gap: 10px;
-          margin-bottom: 40px;
+          margin-bottom: 32px;
         }
 
         .bbg-brand-logo span {
@@ -361,15 +368,14 @@ export default function App() {
           box-shadow: 0 4px 12px rgba(0, 128, 90, 0.3);
         }
 
-        /* Main Area Layout */
+        /* Top Bar Header */
         .bbg-main-area {
           flex-grow: 1;
           display: flex;
           flex-direction: column;
-          min-width: 0; /* Mencegah overflow */
+          min-width: 0;
         }
 
-        /* Top Bar Header */
         .bbg-topbar {
           background-color: #ffffff;
           border-bottom: 1px solid #e2e8f0;
@@ -382,53 +388,24 @@ export default function App() {
           z-index: 40;
         }
 
-        .bbg-topbar-left h2 {
-          font-size: 18px;
+        .bbg-role-dropdown {
+          background-color: #f1f5f9;
+          border: 1px solid #cbd5e1;
           font-weight: 700;
-          color: #0f172a;
-          margin: 0;
-        }
-
-        .bbg-topbar-right {
-          display: flex;
-          align-items: center;
-          gap: 20px;
-        }
-
-        .bbg-vip-badge-btn {
-          background-color: #F2C335;
-          color: #0f172a;
-          font-weight: 700;
-          font-size: 13px;
           padding: 8px 16px;
           border-radius: 10px;
-          border: none;
+          outline: none;
           cursor: pointer;
-          transition: all 0.2s ease;
-          box-shadow: 0 4px 10px rgba(242, 195, 53, 0.2);
+          color: #1e293b;
+          font-size: 13px;
         }
 
-        .bbg-vip-badge-btn:hover {
-          background-color: #e0b224;
-          transform: translateY(-1px);
-        }
-
-        .bbg-profile-section {
-          display: flex;
-          align-items: center;
-          gap: 10px;
-          font-size: 14px;
-          font-weight: 600;
-          color: #334155;
-        }
-
-        /* Content Container */
+        /* Layout Grid and Cards */
         .bbg-content {
           padding: 40px;
           flex-grow: 1;
         }
 
-        /* Custom Stat Cards */
         .bbg-stats-grid {
           display: grid;
           grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
@@ -447,101 +424,12 @@ export default function App() {
           gap: 8px;
         }
 
-        .bbg-stat-title {
-          font-size: 12px;
-          color: #64748b;
-          text-transform: uppercase;
-          font-weight: 700;
-          letter-spacing: 0.05em;
-        }
-
         .bbg-stat-value {
-          font-size: 24px;
+          font-size: 26px;
           font-weight: 800;
           color: #0f172a;
         }
 
-        .bbg-stat-badge {
-          font-size: 11px;
-          font-weight: 600;
-          padding: 4px 8px;
-          border-radius: 6px;
-          align-self: flex-start;
-        }
-
-        .bbg-stat-badge.success {
-          background-color: #dcfce7;
-          color: #15803d;
-        }
-
-        .bbg-stat-badge.info {
-          background-color: #e0f2fe;
-          color: #0369a1;
-        }
-
-        /* Promosi Carousel Banner */
-        .bbg-promo-banner {
-          border-radius: 24px;
-          padding: 40px;
-          color: #ffffff;
-          position: relative;
-          overflow: hidden;
-          margin-bottom: 32px;
-          box-shadow: 0 10px 30px rgba(0, 128, 90, 0.15);
-          transition: all 0.5s ease;
-        }
-
-        .bbg-promo-badge {
-          background-color: #F2C335;
-          color: #0f172a;
-          font-size: 10px;
-          font-weight: 800;
-          padding: 4px 10px;
-          border-radius: 20px;
-          display: inline-block;
-          margin-bottom: 16px;
-          letter-spacing: 0.05em;
-        }
-
-        .bbg-promo-title {
-          font-size: 32px;
-          font-weight: 800;
-          line-height: 1.2;
-          margin-bottom: 12px;
-          max-width: 650px;
-        }
-
-        .bbg-promo-desc {
-          font-size: 14px;
-          color: #e2e8f0;
-          max-width: 600px;
-          margin-bottom: 24px;
-          line-height: 1.6;
-        }
-
-        /* Dynamic dots for banner */
-        .bbg-promo-dots {
-          display: flex;
-          gap: 6px;
-          margin-top: 16px;
-        }
-
-        .bbg-promo-dot {
-          width: 8px;
-          height: 8px;
-          border-radius: 50%;
-          background-color: rgba(255, 255, 255, 0.4);
-          border: none;
-          cursor: pointer;
-        }
-
-        .bbg-promo-dot.active {
-          background-color: #F2C335;
-          width: 24px;
-          border-radius: 10px;
-        }
-
-        /* Interactive Grid Panels */
         .bbg-interactive-card {
           background-color: #ffffff;
           border-radius: 24px;
@@ -551,17 +439,7 @@ export default function App() {
           margin-bottom: 32px;
         }
 
-        .bbg-card-title {
-          font-size: 16px;
-          font-weight: 700;
-          color: #0f172a;
-          margin-bottom: 24px;
-          display: flex;
-          align-items: center;
-          gap: 10px;
-        }
-
-        /* Form Inputs & Selects */
+        /* Interactive Forms & Controls */
         .bbg-form-control {
           background-color: #f8fafc;
           border: 1px solid #e2e8f0;
@@ -586,20 +464,34 @@ export default function App() {
           color: #ffffff;
           font-weight: 700;
           font-size: 13px;
-          padding: 14px 24px;
+          padding: 12px 24px;
           border-radius: 12px;
           border: none;
           cursor: pointer;
           transition: all 0.2s ease;
-          box-shadow: 0 4px 12px rgba(0, 128, 90, 0.15);
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          gap: 8px;
         }
 
         .bbg-btn-primary:hover {
           background-color: #006647;
-          transform: translateY(-1px);
         }
 
-        /* Toast Alert Floating Box */
+        /* Banner Carousel Slider */
+        .bbg-promo-banner {
+          border-radius: 24px;
+          padding: 40px;
+          color: #ffffff;
+          position: relative;
+          overflow: hidden;
+          margin-bottom: 32px;
+          box-shadow: 0 10px 30px rgba(0, 128, 90, 0.15);
+          transition: all 0.5s ease;
+        }
+
+        /* Toast Popup Alerts */
         .bbg-toast {
           position: fixed;
           top: 32px;
@@ -619,100 +511,23 @@ export default function App() {
           border: 1px solid #1e293b;
         }
 
-        .bbg-toast-dot {
-          width: 8px;
-          height: 8px;
-          background-color: #F2C335;
-          border-radius: 50%;
-          display: inline-block;
-          animation: bbg-ping 1s infinite alternate;
-        }
-
-        @keyframes bbg-ping {
-          0% { transform: scale(1); opacity: 0.5; }
-          100% { transform: scale(1.5); opacity: 1; }
-        }
-
-        /* Tracking Timeline styling */
-        .bbg-timeline-container {
-          background-color: #f8fafc;
-          border-radius: 16px;
-          padding: 24px;
-          border: 1px solid #e2e8f0;
-          display: flex;
-          flex-direction: column;
-          gap: 16px;
-        }
-
-        .bbg-timeline-progress-bar {
-          height: 6px;
-          background-color: #e2e8f0;
-          border-radius: 10px;
+        /* Timeline and Interactive Map */
+        .bbg-map-mock {
+          background-color: #0f172a;
+          border-radius: 20px;
+          height: 200px;
           position: relative;
-          margin: 20px 0;
           overflow: hidden;
+          margin-bottom: 20px;
         }
 
-        .bbg-timeline-progress-fill {
-          height: 100%;
-          background-color: #00805a;
-          transition: width 0.5s ease-in-out;
-        }
-
-        /* Floating Sidebar Actions */
-        .bbg-floating-widget {
-          position: fixed;
-          right: 24px;
-          bottom: 24px;
-          display: flex;
-          flex-direction: column;
-          gap: 10px;
-          z-index: 50;
-        }
-
-        .bbg-floating-btn {
-          width: 48px;
-          height: 48px;
+        .bbg-map-dot {
+          position: absolute;
+          width: 12px;
+          height: 12px;
           border-radius: 50%;
-          background-color: #ffffff;
-          color: #0f172a;
-          border: 1px solid #e2e8f0;
-          display: flex;
-          align-items: center;
-          justify-content: center;
-          font-size: 18px;
-          cursor: pointer;
-          box-shadow: 0 4px 15px rgba(0,0,0,0.08);
-          transition: all 0.3s ease;
-        }
-
-        .bbg-floating-btn:hover {
-          background-color: #00805a;
-          color: #ffffff;
-          transform: translateY(-2px);
-        }
-
-        /* Modal Layout */
-        .bbg-modal-overlay {
-          position: fixed;
-          inset: 0;
-          background-color: rgba(15, 23, 42, 0.6);
-          backdrop-filter: blur(4px);
-          display: flex;
-          align-items: center;
-          justify-content: center;
-          z-index: 60;
-          padding: 16px;
-        }
-
-        .bbg-modal-card {
-          background-color: #ffffff;
-          border-radius: 24px;
-          width: 100%;
-          max-width: 480px;
-          padding: 32px;
-          box-shadow: 0 20px 40px rgba(0,0,0,0.15);
-          position: relative;
+          background-color: #FF5A36;
+          box-shadow: 0 0 12px #FF5A36;
         }
 
         /* Responsive Breakpoints */
@@ -726,9 +541,6 @@ export default function App() {
             padding: 16px;
             position: relative;
           }
-          .bbg-brand-logo {
-            margin-bottom: 20px;
-          }
           .bbg-menu-list {
             flex-direction: row;
             overflow-x: auto;
@@ -737,7 +549,6 @@ export default function App() {
           .bbg-menu-item {
             white-space: nowrap;
             width: auto;
-            padding: 8px 16px;
           }
           .bbg-topbar {
             padding: 16px 20px;
@@ -751,163 +562,142 @@ export default function App() {
       {/* FLOATING TOAST NOTIFICATIONS */}
       {toastMessage && (
         <div className="bbg-toast">
-          <span className="bbg-toast-dot"></span>
+          <span style={{ width: '8px', height: '8px', backgroundColor: '#F2C335', borderRadius: '50%' }}></span>
           <span>{toastMessage}</span>
         </div>
       )}
 
       {/* ==========================================
-          SIDEBAR NAVIGATION (LEFT SIDEBAR)
+          SIDEBAR NAVIGATION (LEFT NAV PANEL)
           ========================================== */}
       <aside className="bbg-sidebar">
         <div className="bbg-brand-logo">
           <span>🏗️</span> BahanBangun<span>Go</span>
         </div>
+        
+        {/* Navigasi Berdasarkan Menu */}
         <div className="bbg-menu-list">
           <button 
-            onClick={() => { setActiveTab('dashboard'); triggerToast('Membuka Dasbor Analitik'); }} 
+            onClick={() => { setActiveTab('dashboard'); triggerToast('Membuka Dasbor Utama'); }} 
             className={`bbg-menu-item ${activeTab === 'dashboard' ? 'active' : ''}`}
           >
             📊 Dasbor Analitik
           </button>
+          
           <button 
-            onClick={() => { setActiveTab('tracking'); triggerToast('Membuka Pelacakan Resi'); }} 
-            className={`bbg-menu-item ${activeTab === 'tracking' ? 'active' : ''}`}
+            onClick={() => { setActiveTab('browse'); triggerToast('Membuka Katalog Material'); }} 
+            className={`bbg-menu-item ${activeTab === 'browse' ? 'active' : ''}`}
           >
-            🔍 Lacak Resi AWB
+            🧱 Jelajah Material
           </button>
+          
           <button 
-            onClick={() => { setActiveTab('price'); triggerToast('Membuka Kalkulator Ongkir'); }} 
-            className={`bbg-menu-item ${activeTab === 'price' ? 'active' : ''}`}
+            onClick={() => { setActiveTab('cart'); triggerToast('Membuka Keranjang Belanja'); }} 
+            className={`bbg-menu-item ${activeTab === 'cart' ? 'active' : ''}`}
           >
-            ⚖️ Cek Tarif & ODOL
+            🛒 Keranjang Belanja ({cart.reduce((sum, item) => sum + item.quantity, 0)})
           </button>
+
           <button 
-            onClick={() => { setActiveTab('outlet'); triggerToast('Membuka Pencarian Hub'); }} 
-            className={`bbg-menu-item ${activeTab === 'outlet' ? 'active' : ''}`}
+            onClick={() => { setActiveTab('orders'); triggerToast('Membuka Log Kerja Pengiriman'); }} 
+            className={`bbg-menu-item ${activeTab === 'orders' ? 'active' : ''}`}
           >
-            🏪 Cari Cabang Hub
+            📦 Lacak & Atur Order
           </button>
+
           <button 
-            onClick={() => { setActiveTab('simulator'); triggerToast('Membuka Simulator Peran'); }} 
-            className={`bbg-menu-item ${activeTab === 'simulator' ? 'active' : ''}`}
+            onClick={() => { setActiveTab('chat'); triggerToast('Membuka Chat Koordinator'); }} 
+            className={`bbg-menu-item ${activeTab === 'chat' ? 'active' : ''}`}
           >
-            🎛️ Simulator Sandboks
+            💬 Chat Koordinator
           </button>
         </div>
+
         <div style={{ marginTop: 'auto', borderTop: '1px solid #1e293b', paddingTop: '20px' }}>
-          <p style={{ fontSize: '10px', color: '#64748b', fontWeight: '700', textTransform: 'uppercase', letterSpacing: '0.05em' }}>
-            System Standard v4.0
+          <p style={{ fontSize: '11px', color: '#64748b', fontWeight: '700', textTransform: 'uppercase' }}>
+            System Standard v4.2
           </p>
         </div>
       </aside>
 
       {/* ==========================================
-          MAIN AREA CONTENT (TOPBAR + GRID BODY)
+          MAIN CONTENT VIEW AREA
           ========================================== */}
       <main className="bbg-main-area">
         
-        {/* TOP BAR HEADER */}
+        {/* TOP BAR / NAVIGATION HEADER */}
         <header className="bbg-topbar">
-          <div className="bbg-topbar-left">
-            <h2>Portal Logistik Bahan Bangunan & Kargo Curah</h2>
+          <div>
+            <h2 style={{ fontSize: '18px', fontWeight: '700', margin: 0 }}>Portal Logistik Bahan Bangunan & Kargo Curah</h2>
+            <p style={{ fontSize: '12px', color: '#64748b', margin: '4px 0 0 0' }}>Integrasi Admin, Toko Mitra, Konsumen, & Kurir</p>
           </div>
-          <div className="bbg-topbar-right">
-            <button onClick={() => setShowVipModal(true)} className="bbg-vip-badge-btn">
-              👑 Daftar VIP Proyek
-            </button>
-            <span style={{ width: '1px', height: '24px', backgroundColor: '#cbd5e1' }}></span>
-            <div className="bbg-profile-section">
-              <span>👤</span>
-              <span className="hidden md:inline">Kontraktor_Hub</span>
+          
+          <div style={{ display: 'flex', itemsCenter: 'center', gap: '16px' }}>
+            {/* Custom Login Switcher */}
+            <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+              <span style={{ fontSize: '12px', fontWeight: '700', color: '#64748b' }}>Simulasi Peran:</span>
+              <select 
+                value={role} 
+                onChange={(e) => {
+                  setRole(e.target.value);
+                  triggerToast(`Berganti Peran Ke: ${e.target.value.toUpperCase()}`);
+                }}
+                className="bbg-role-dropdown"
+              >
+                <option value="customer">👤 Konsumen (Customer)</option>
+                <option value="admin">🛡️ Admin Hub (Broker)</option>
+                <option value="merchant">🏪 Toko Mitra (Supplier)</option>
+                <option value="driver">🚛 Kurir / Driver (Courier)</option>
+              </select>
             </div>
           </div>
         </header>
 
-        {/* CONTAINER CONTENT */}
+        {/* BODY CONTENT BOX */}
         <div className="bbg-content">
           
-          {/* STATS COUNTERS GRID */}
+          {/* STATS MATRIX CARDS */}
           <section className="bbg-stats-grid">
             <div className="bbg-stat-card">
-              <span className="bbg-stat-title">Total Muatan Aktif</span>
-              <span className="bbg-stat-value">3 Pengiriman</span>
-              <span className="bbg-stat-badge success">🟢 3 Armada di Jalan</span>
+              <span style={{ fontSize: '11px', fontWeight: '700', color: '#64748b', textTransform: 'uppercase' }}>Total Pengiriman</span>
+              <span className="bbg-stat-value">{orders.length} Muatan</span>
+              <span style={{ fontSize: '11px', fontWeight: '700', color: '#00805a' }}>🟢 Terdata di Cloud</span>
             </div>
             <div className="bbg-stat-card">
-              <span className="bbg-stat-title">Tonase Logistik</span>
-              <span className="bbg-stat-value">3.700 Kg</span>
-              <span className="bbg-stat-badge success">⚖️ Bebas ODOL</span>
+              <span style={{ fontSize: '11px', fontWeight: '700', color: '#64748b', textTransform: 'uppercase' }}>Tonase Logistik</span>
+              <span className="bbg-stat-value">{(orders.reduce((acc, o) => acc + o.totalWeight, 0)).toLocaleString('id-ID')} Kg</span>
+              <span style={{ fontSize: '11px', fontWeight: '700', color: '#00805a' }}>⚖️ Aman Dari ODOL</span>
             </div>
             <div className="bbg-stat-card">
-              <span className="bbg-stat-title">Cabang Hub Depot</span>
-              <span className="bbg-stat-value">5 Wilayah</span>
-              <span className="bbg-stat-badge info">📍 Jawa & Banten</span>
-            </div>
-            <div className="bbg-stat-card">
-              <span className="bbg-stat-title">Dana Escrow Terjamin</span>
-              <span className="bbg-stat-value">Rp 12.5M</span>
-              <span className="bbg-stat-badge info">🔒 Aman 100%</span>
+              <span style={{ fontSize: '11px', fontWeight: '700', color: '#64748b', textTransform: 'uppercase' }}>Escrow Terkunci</span>
+              <span className="bbg-stat-value">Rp {(orders.reduce((acc, o) => acc + o.grandTotal, 0)).toLocaleString('id-ID')}</span>
+              <span style={{ fontSize: '11px', fontWeight: '700', color: '#0ea5e9' }}>🔒 Jaminan Keamanan</span>
             </div>
           </section>
 
-          {/* ==========================================
-              TAB CONTROLLER VIEW
-              ========================================== */}
-
-          {/* TAB 1: DASHBOARD (HOME SLIDER & CATEGORIES) */}
+          {/* =======================================================
+              TAB 1: ANALYTICS DASHBOARD Overview
+              ======================================================= */}
           {activeTab === 'dashboard' && (
             <div style={{ animation: 'fadeIn 0.4s ease' }}>
               
-              {/* Dynamic Promo Banner Slider */}
-              <div 
-                className="bbg-promo-banner" 
-                style={{ background: SLIDER_PHOTOS[currentSlide].bgGradient }}
-              >
-                <span className="bbg-promo-badge">{SLIDER_PHOTOS[currentSlide].badge}</span>
-                <h1 className="bbg-promo-title">{SLIDER_PHOTOS[currentSlide].title}</h1>
-                <p className="bbg-promo-desc">{SLIDER_PHOTOS[currentSlide].desc}</p>
-                <div style={{ display: 'flex', gap: '12px' }}>
-                  <button 
-                    onClick={() => setShowVipModal(true)} 
-                    className="bbg-vip-badge-btn"
-                  >
-                    Daftar Akun VIP
-                  </button>
-                  <button 
-                    onClick={() => { setActiveTab('price'); triggerToast('Membuka Kalkulator ODOL'); }}
-                    style={{ background: 'rgba(255,255,255,0.15)', color: '#ffffff', border: '1px solid rgba(255,255,255,0.2)', padding: '8px 16px', borderRadius: '10px', fontSize: '13px', fontWeight: '700', cursor: 'pointer' }}
-                  >
-                    ⚖️ Hitung Toleransi ODOL
-                  </button>
-                </div>
-
-                <div className="bbg-promo-dots">
-                  {SLIDER_PHOTOS.map((_, idx) => (
-                    <button 
-                      key={idx} 
-                      onClick={() => setCurrentSlide(idx)}
-                      className={`bbg-promo-dot ${currentSlide === idx ? 'active' : ''}`}
-                    ></button>
-                  ))}
-                </div>
+              {/* Promo Image Slide Banner */}
+              <div className="bbg-promo-banner" style={{ background: SLIDER_PHOTOS[currentSlide].bgGradient }}>
+                <span style={{ backgroundColor: '#F2C335', color: '#0f172a', fontSize: '10px', fontWeight: '800', padding: '4px 10px', borderRadius: '20px', letterSpacing: '0.05em' }}>CARGO PREMIUM B2B</span>
+                <h1 style={{ fontSize: '32px', fontWeight: '800', margin: '12px 0 8px 0', lineHeight: '1.2' }}>{SLIDER_PHOTOS[currentSlide].title}</h1>
+                <p style={{ fontSize: '14px', color: '#e2e8f0', margin: '0 0 24px 0', maxWidth: '600px' }}>{SLIDER_PHOTOS[currentSlide].desc}</p>
+                <button onClick={() => { setActiveTab('browse'); }} className="bbg-btn-primary" style={{ backgroundColor: '#F2C335', color: '#0f172a' }}>
+                  🧱 Jelajah & Belanja Sekarang
+                </button>
               </div>
 
-              {/* Grid Categories */}
+              {/* Dynamic Notification Hub */}
               <div className="bbg-interactive-card">
-                <h3 className="bbg-card-title">🧱 Kategori Pengapalan Material Konstruksi</h3>
-                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(180px, 1fr))', gap: '16px' }}>
-                  {PRODUCT_CATEGORIES.map(cat => (
-                    <div 
-                      key={cat.id} 
-                      onClick={() => { setActiveTab('price'); triggerToast(`Menyaring: ${cat.name}`); }}
-                      style={{ padding: '20px', backgroundColor: '#f8fafc', borderRadius: '16px', border: '1px solid #e2e8f0', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '16px', transition: 'all 0.2s ease' }}
-                    >
-                      <span style={{ fontSize: '28px' }}>{cat.icon}</span>
-                      <div>
-                        <h4 style={{ margin: '0 0 4px 0', fontSize: '14px', fontWeight: '700', color: '#0f172a' }}>{cat.name}</h4>
-                        <p style={{ margin: 0, fontSize: '11px', color: '#64748b', fontWeight: '500' }}>{cat.count}</p>
-                      </div>
+                <h3 style={{ margin: '0 0 16px 0', fontSize: '16px', fontWeight: '700' }}>🔔 Live Status & Logs Notifikasi</h3>
+                <div style={{ maxHeight: '150px', overflowY: 'auto', display: 'flex', flexDirection: 'column', gap: '8px' }}>
+                  {notifications.map(n => (
+                    <div key={n.id} style={{ padding: '12px 16px', backgroundColor: '#f1f5f9', borderLeft: '4px solid #00805a', borderRadius: '6px', fontSize: '13px' }}>
+                      {n.text}
                     </div>
                   ))}
                 </div>
@@ -916,461 +706,325 @@ export default function App() {
             </div>
           )}
 
-          {/* TAB 2: RESI TRACKING */}
-          {activeTab === 'tracking' && (
+          {/* =======================================================
+              TAB 2: MATERIAL BROWSER
+              ======================================================= */}
+          {activeTab === 'browse' && (
             <div className="bbg-interactive-card" style={{ animation: 'fadeIn 0.4s ease' }}>
-              <h3 className="bbg-card-title">🔍 Lacak Pengiriman Material Real-Time</h3>
-              <p style={{ fontSize: '13px', color: '#64748b', marginBottom: '20px' }}>
-                Masukkan ID resi / AWB pengiriman Anda untuk melacak posisi armada kurir truk logistik.
-              </p>
-              
-              <div style={{ display: 'flex', gap: '12px', marginBottom: '32px' }}>
-                <input 
-                  type="text" 
-                  value={searchTrackingId}
-                  onChange={(e) => setSearchTrackingId(e.target.value)}
-                  placeholder="Masukkan Nomor Resi (Contoh: BBG-998122, BBG-776655, BBG-112233)"
-                  className="bbg-form-control"
-                  style={{ maxWidth: '400px' }}
-                />
-                <button 
-                  onClick={() => {
-                    if (searchedShipment) {
-                      triggerToast(`Resi ${searchTrackingId} ditemukan!`);
-                    } else {
-                      triggerToast('Resi tidak ditemukan. Cek kembali ID Anda.');
-                    }
-                  }}
-                  className="bbg-btn-primary"
-                >
-                  CEK RESI
-                </button>
+              <div style={{ borderBottom: '1px solid #e2e8f0', paddingBottom: '16px', marginBottom: '24px' }}>
+                <h3 style={{ margin: 0, fontSize: '18px', fontWeight: '700' }}>🧱 Katalog Pengapalan Material Konstruksi</h3>
+                <p style={{ margin: '4px 0 0 0', fontSize: '13px', color: '#64748b' }}>Bahan bermutu tinggi, terhitung berat-volumenya secara otomatis.</p>
               </div>
 
-              {searchedShipment ? (
-                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(300px, 1fr))', gap: '32px' }}>
-                  
-                  {/* Data Ringkas Paket */}
-                  <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
-                    <div style={{ borderBottom: '1px solid #e2e8f0', paddingBottom: '16px' }}>
-                      <span style={{ backgroundColor: '#dcfce7', color: '#15803d', fontSize: '10px', fontWeight: '700', padding: '4px 10px', borderRadius: '6px', textTransform: 'uppercase' }}>
-                        {searchedShipment.status}
-                      </span>
-                      <h4 style={{ fontSize: '18px', fontWeight: '800', margin: '12px 0 4px 0', color: '#0f172a' }}>{searchedShipment.id}</h4>
-                      <p style={{ margin: 0, fontSize: '12px', color: '#64748b' }}>Pengapalan: {searchedShipment.date}</p>
+              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))', gap: '24px' }}>
+                {products.map(p => (
+                  <div key={p.id} style={{ border: '1px solid #e2e8f0', borderRadius: '20px', padding: '24px', display: 'flex', flexDirection: 'column', justifyContent: 'space-between' }}>
+                    <div>
+                      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                        <span style={{ fontSize: '32px' }}>{p.image}</span>
+                        <span style={{ backgroundColor: '#f1f5f9', fontSize: '11px', fontWeight: '700', padding: '4px 8px', borderRadius: '6px' }}>{p.category}</span>
+                      </div>
+                      <h4 style={{ margin: '16px 0 8px 0', fontSize: '16px', fontWeight: '700' }}>{p.name}</h4>
+                      <div style={{ fontSize: '13px', color: '#64748b', display: 'flex', flexDirection: 'column', gap: '4px' }}>
+                        <span>⚖️ Berat: <b>{p.weight} Kg/{p.unit}</b></span>
+                        <span>📐 Volume: <b>{p.volume} m³</b></span>
+                        <span>📦 Stok Gudang: <b>{p.stock} {p.unit}</b></span>
+                      </div>
                     </div>
 
-                    <div style={{ display: 'flex', flexDirection: 'column', gap: '10px', fontSize: '13px', color: '#334155' }}>
-                      <p>📦 <b>Barang Muatan:</b> {searchedShipment.item}</p>
-                      <p>🚛 <b>Armada Truk:</b> {searchedShipment.fleet}</p>
-                      <p>👨‍✈️ <b>Nama Driver:</b> {searchedShipment.driver}</p>
-                      <p>⏳ <b>Estimasi Tiba:</b> {searchedShipment.eta}</p>
-                    </div>
-                  </div>
-
-                  {/* Visual Stepper Progress */}
-                  <div className="bbg-timeline-container">
-                    <h5 style={{ margin: '0 0 10px 0', fontSize: '14px', fontWeight: '700', color: '#0f172a' }}>Timeline Rute Pengiriman:</h5>
-                    
-                    <div className="bbg-timeline-progress-bar">
-                      <div className="bbg-timeline-progress-fill" style={{ width: `${searchedShipment.progress}%` }}></div>
-                    </div>
-
-                    <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '11px', fontWeight: '700', color: '#64748b' }}>
-                      <span style={{ color: searchedShipment.progress >= 25 ? '#00805a' : '#64748b' }}>Disiapkan</span>
-                      <span style={{ color: searchedShipment.progress >= 50 ? '#00805a' : '#64748b' }}>Dalam Perjalanan</span>
-                      <span style={{ color: searchedShipment.progress >= 100 ? '#00805a' : '#64748b' }}>Selesai / Tiba</span>
-                    </div>
-
-                    <div style={{ backgroundColor: '#f1f5f9', borderLeft: '4px solid #00805a', padding: '12px', borderRadius: '8px', fontSize: '12px', color: '#334155', fontStyle: 'italic', marginTop: '10px' }}>
-                      "{searchedShipment.statusDetail}"
+                    <div style={{ borderTop: '1px solid #f1f5f9', marginTop: '16px', paddingTop: '16px', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                      <span style={{ fontSize: '16px', fontWeight: '800', color: '#0f172a' }}>Rp {p.price.toLocaleString('id-ID')}</span>
+                      <button 
+                        onClick={() => addToCart(p)} 
+                        className="bbg-btn-primary" 
+                        style={{ padding: '8px 16px', fontSize: '12px' }}
+                      >
+                        + Keranjang
+                      </button>
                     </div>
                   </div>
+                ))}
+              </div>
+            </div>
+          )}
 
+          {/* =======================================================
+              TAB 3: KERANJANG BELANJA & CHECKOUT LOGISTICS
+              ======================================================= */}
+          {activeTab === 'cart' && (
+            <div className="bbg-interactive-card" style={{ animation: 'fadeIn 0.4s ease' }}>
+              <h3 style={{ margin: '0 0 24px 0', fontSize: '18px', fontWeight: '700' }}>🛒 Keranjang Belanja Logistik</h3>
+              
+              {cart.length === 0 ? (
+                <div style={{ padding: '48px 24px', textAlign: 'center', color: '#64748b' }}>
+                  <span style={{ fontSize: '48px', display: 'block', marginBottom: '16px' }}>🛒</span>
+                  <p style={{ margin: 0, fontWeight: '600' }}>Keranjang belanja Anda kosong.</p>
+                  <button onClick={() => setActiveTab('browse')} className="bbg-btn-primary" style={{ margin: '16px auto 0 auto' }}>Belanja Sekarang</button>
                 </div>
               ) : (
-                <div style={{ padding: '40px', textAlign: 'center', backgroundColor: '#f8fafc', borderRadius: '16px', border: '1px solid #e2e8f0', color: '#64748b' }}>
-                  ⚠️ Nomor resi tidak ditemukan. Gunakan ID demo bawaan seperti <b>BBG-998122</b> atau <b>BBG-776655</b>.
+                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(320px, 1fr))', gap: '32px' }}>
+                  
+                  {/* Item List */}
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
+                    <div style={{ borderBottom: '1px solid #e2e8f0', paddingBottom: '12px' }}>
+                      <h4 style={{ margin: 0, fontSize: '14px', fontWeight: '700', color: '#64748b', textTransform: 'uppercase' }}>Daftar Muatan Anda</h4>
+                    </div>
+                    {cart.map(item => (
+                      <div key={item.id} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '16px', border: '1px solid #e2e8f0', borderRadius: '16px' }}>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+                          <span style={{ fontSize: '24px' }}>{item.image}</span>
+                          <div>
+                            <h5 style={{ margin: 0, fontSize: '14px', fontWeight: '700' }}>{item.name}</h5>
+                            <p style={{ margin: 0, fontSize: '12px', color: '#64748b' }}>Rp {item.price.toLocaleString('id-ID')}</p>
+                          </div>
+                        </div>
+
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                          <button onClick={() => updateCartQty(item.id, item.quantity - 1)} style={{ padding: '4px 8px', borderRadius: '4px', border: '1px solid #cbd5e1', cursor: 'pointer' }}>-</button>
+                          <span style={{ fontSize: '14px', fontWeight: '700' }}>{item.quantity}</span>
+                          <button onClick={() => updateCartQty(item.id, item.quantity + 1)} style={{ padding: '4px 8px', borderRadius: '4px', border: '1px solid #cbd5e1', cursor: 'pointer' }}>+</button>
+                        </div>
+                      </div>
+                    ))}
+
+                    {/* Shipping Coordinates Setup */}
+                    <div style={{ marginTop: '24px', display: 'flex', flexDirection: 'column', gap: '12px' }}>
+                      <div>
+                        <label style={{ fontSize: '11px', fontWeight: '700', color: '#64748b', textTransform: 'uppercase', display: 'block', marginBottom: '6px' }}>Alamat Drop-Off Proyek</label>
+                        <input 
+                          type="text" 
+                          value={shippingAddress} 
+                          onChange={(e) => setShippingAddress(e.target.value)} 
+                          className="bbg-form-control" 
+                        />
+                      </div>
+
+                      {/* Map Coordinate Mock Simulator */}
+                      <div style={{ padding: '16px', backgroundColor: '#f8fafc', borderRadius: '16px', border: '1px solid #e2e8f0' }}>
+                        <span style={{ fontSize: '11px', fontWeight: '700', color: '#64748b', textTransform: 'uppercase', display: 'block', marginBottom: '8px' }}>Simulasi Koordinat GPS Peta</span>
+                        <div style={{ height: '100px', backgroundColor: '#0f172a', borderRadius: '12px', position: 'relative' }}>
+                          <div style={{ position: 'absolute', top: '20px', left: '30px', color: '#ffffff', fontSize: '10px' }}>🏪 Depot A</div>
+                          <div style={{ position: 'absolute', bottom: '20px', right: '40px', color: '#ffffff', fontSize: '10px' }}>📍 Proyek Anda</div>
+                          <div style={{ position: 'absolute', top: '50px', left: '150px', color: '#FF5A36', fontSize: '12px', fontWeight: '700' }}>Rute: {activeDistance} Km</div>
+                        </div>
+                        <div style={{ display: 'flex', gap: '8px', marginTop: '10px' }}>
+                          <button onClick={() => { setCustomerLat(-6.205); setCustomerLng(106.815); }} style={{ fontSize: '10px', padding: '4px 8px', cursor: 'pointer' }}>Set Utara</button>
+                          <button onClick={() => { setCustomerLat(-6.230); setCustomerLng(106.850); }} style={{ fontSize: '10px', padding: '4px 8px', cursor: 'pointer' }}>Set Selatan</button>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Summary & Checkout Checkout Checkout */}
+                  <div style={{ backgroundColor: '#f8fafc', border: '1px solid #e2e8f0', borderRadius: '24px', padding: '32px', display: 'flex', flexDirection: 'column', justifyContent: 'space-between' }}>
+                    <div>
+                      <h4 style={{ margin: '0 0 16px 0', fontSize: '14px', fontWeight: '700', color: '#64748b', textTransform: 'uppercase' }}>Rincian Biaya Muatan</h4>
+                      
+                      <div style={{ display: 'flex', flexDirection: 'column', gap: '12px', fontSize: '13px' }}>
+                        <p style={{ display: 'flex', justifyContent: 'space-between' }}><span>Subtotal Semen/Pasir:</span> <b>Rp {cartTotalPrice.toLocaleString('id-ID')}</b></p>
+                        <p style={{ display: 'flex', justifyContent: 'space-between' }}><span>Biaya Armada ({recommendedFleet.name}):</span> <b>Rp {rawDeliveryCost.toLocaleString('id-ID')}</b></p>
+                        
+                        {/* Addon checkboxes */}
+                        <div style={{ borderTop: '1px solid #e2e8f0', paddingTop: '12px', display: 'flex', flexDirection: 'column', gap: '8px' }}>
+                          <label style={{ display: 'flex', alignItems: 'center', gap: '8px', cursor: 'pointer' }}>
+                            <input type="checkbox" checked={selectedAddons.helper} onChange={(e) => setSelectedAddons({ ...selectedAddons, helper: e.target.checked })} style={{ accentColor: '#00805a' }} />
+                            <span>Kuli Bongkar Muat (+Rp75.000/orang)</span>
+                          </label>
+                          {selectedAddons.helper && (
+                            <input type="number" value={helperCount} onChange={(e) => setHelperCount(Math.max(1, parseInt(e.target.value) || 1))} style={{ width: '60px', marginLeft: '24px' }} className="bbg-form-control" />
+                          )}
+                          <label style={{ display: 'flex', alignItems: 'center', gap: '8px', cursor: 'pointer' }}>
+                            <input type="checkbox" checked={selectedAddons.tol} onChange={(e) => setSelectedAddons({ ...selectedAddons, tol: e.target.checked })} />
+                            <span>Biaya Jalan Tol (+Rp35.000)</span>
+                          </label>
+                          <label style={{ display: 'flex', alignItems: 'center', gap: '8px', cursor: 'pointer' }}>
+                            <input type="checkbox" checked={selectedAddons.terpal} onChange={(e) => setSelectedAddons({ ...selectedAddons, terpal: e.target.checked })} />
+                            <span>Penutup Terpal Hujan (+Rp20.000)</span>
+                          </label>
+                        </div>
+
+                        <div style={{ borderTop: '1px solid #cbd5e1', paddingTop: '16px', display: 'flex', justifyContent: 'space-between', fontSize: '16px', fontWeight: '800' }}>
+                          <span>Total Tagihan:</span>
+                          <span style={{ color: '#00805a' }}>Rp {grandTotal.toLocaleString('id-ID')}</span>
+                        </div>
+                      </div>
+                    </div>
+
+                    <button onClick={handleCheckout} className="bbg-btn-primary" style={{ width: '100%', marginTop: '24px', padding: '16px' }}>
+                      Kunci Pembayaran Escrow & Kirim Proyek 🔒
+                    </button>
+                  </div>
+
                 </div>
               )}
             </div>
           )}
 
-          {/* TAB 3: CEK HARGA & KALKULATOR ODOL */}
-          {activeTab === 'price' && (
-            <div className="bbg-interactive-card" style={{ animation: 'fadeIn 0.4s ease' }}>
-              <h3 className="bbg-card-title">⚖️ Kalkulator Ongkir & Keamanan Muatan (Anti-ODOL)</h3>
-              
-              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))', gap: '32px' }}>
-                
-                {/* Inputs */}
-                <div style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
-                  <div>
-                    <label style={{ display: 'block', fontSize: '11px', fontWeight: '700', color: '#64748b', textTransform: 'uppercase', marginBottom: '6px' }}>Pilih Tipe Armada</label>
-                    <select 
-                      value={calcFleet} 
-                      onChange={(e) => setCalcFleet(e.target.value)}
-                      className="bbg-form-control"
-                    >
-                      <option value="pickup">🚗 Mobil Pick-Up (Maks 1.5 Ton)</option>
-                      <option value="engkel">🚚 Truk Engkel CDE (Maks 3 Ton)</option>
-                      <option value="double">🚛 Truk Double CDD (Maks 7 Ton)</option>
-                    </select>
-                  </div>
-
-                  <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '16px' }}>
-                    <div>
-                      <label style={{ display: 'block', fontSize: '11px', fontWeight: '700', color: '#64748b', textTransform: 'uppercase', marginBottom: '6px' }}>Jarak Rute (Km)</label>
-                      <input 
-                        type="number" 
-                        value={calcDistance} 
-                        onChange={(e) => setCalcDistance(Math.max(1, parseInt(e.target.value) || 0))}
-                        className="bbg-form-control"
-                      />
-                    </div>
-                    <div>
-                      <label style={{ display: 'block', fontSize: '11px', fontWeight: '700', color: '#64748b', textTransform: 'uppercase', marginBottom: '6px' }}>Berat Muatan (Kg)</label>
-                      <input 
-                        type="number" 
-                        value={calcWeight} 
-                        onChange={(e) => setCalcWeight(Math.max(1, parseInt(e.target.value) || 0))}
-                        className="bbg-form-control"
-                      />
-                    </div>
-                  </div>
-
-                  <div>
-                    <label style={{ display: 'block', fontSize: '11px', fontWeight: '700', color: '#64748b', textTransform: 'uppercase', marginBottom: '6px' }}>Volume Muatan (m³)</label>
-                    <input 
-                      type="number" 
-                      step="0.1"
-                      value={calcVolume} 
-                      onChange={(e) => setCalcVolume(Math.max(0.1, parseFloat(e.target.value) || 0))}
-                      className="bbg-form-control"
-                    />
-                  </div>
-
-                  <label style={{ display: 'flex', alignItems: 'center', gap: '10px', fontSize: '13px', fontWeight: '600', cursor: 'pointer' }}>
-                    <input 
-                      type="checkbox" 
-                      checked={helperService}
-                      onChange={(e) => setHelperService(e.target.checked)}
-                      style={{ width: '18px', height: '18px', accentColor: '#00805a' }}
-                    />
-                    <span>Gunakan Jasa Helper Bongkar Muat (+Rp50.000)</span>
-                  </label>
-                </div>
-
-                {/* Pricing Summary Box */}
-                <div style={{ backgroundColor: '#f8fafc', border: '1px solid #e2e8f0', borderRadius: '20px', padding: '32px', display: 'flex', flexDirection: 'column', justifyContent: 'space-between' }}>
-                  <div>
-                    <span style={{ fontSize: '11px', color: '#64748b', fontWeight: '700', textTransform: 'uppercase' }}>Estimasi Biaya Pengiriman</span>
-                    <h1 style={{ fontSize: '32px', fontWeight: '800', color: '#0f172a', margin: '8px 0 24px 0' }}>
-                      Rp {calculatedPrice.toLocaleString('id-ID')}
-                    </h1>
-
-                    <div style={{ display: 'flex', flexDirection: 'column', gap: '12px', fontSize: '13px', color: '#475569', borderTop: '1px solid #e2e8f0', paddingTop: '20px' }}>
-                      <p>🛣️ <b>Total Jarak:</b> {calcDistance} Km</p>
-                      <p>⚖️ <b>Bobot Muatan:</b> {calcWeight} Kg</p>
-                      <p>📐 <b>Volume Muatan:</b> {calcVolume} m³</p>
-                    </div>
-                  </div>
-
-                  {/* ODOL Safety warning banner */}
-                  <div style={{ 
-                    marginTop: '24px', 
-                    padding: '16px', 
-                    borderRadius: '12px', 
-                    fontSize: '12px', 
-                    fontWeight: '600', 
-                    border: '1px solid',
-                    backgroundColor: odolAlert ? '#fef2f2' : '#f0fdf4',
-                    borderColor: odolAlert ? '#fca5a5' : '#bbf7d0',
-                    color: odolAlert ? '#991b1b' : '#166534'
-                  }}>
-                    {odolAlert ? (
-                      <span>🚨 <b>Overloading Warning (ODOL)!</b> Bobot melebihi kapasitas standar armada pilihan Anda. Harap tingkatkan armada atau pecah muatan demi keselamatan.</span>
-                    ) : (
-                      <span>✅ <b>Muatan Aman!</b> Berat muatan Anda sesuai dengan regulasi kapasitas angkut jalan raya nasional.</span>
-                    )}
-                  </div>
-                </div>
-
-              </div>
-            </div>
-          )}
-
-          {/* TAB 4: CABANG HUB DEPOT */}
-          {activeTab === 'outlet' && (
-            <div className="bbg-interactive-card" style={{ animation: 'fadeIn 0.4s ease' }}>
-              <h3 className="bbg-card-title">🏪 Hub Depot Utama & Pusat Distribusi</h3>
-              
-              {/* Region Filter Buttons */}
-              <div style={{ display: 'flex', gap: '10px', marginBottom: '24px' }}>
-                {['Jakarta', 'Tangerang', 'Bekasi', 'Bandung'].map(city => (
-                  <button
-                    key={city}
-                    onClick={() => setSelectedRegion(city)}
-                    style={{ 
-                      padding: '8px 16px', 
-                      borderRadius: '8px', 
-                      fontSize: '13px', 
-                      fontWeight: '700', 
-                      border: '1px solid',
-                      cursor: 'pointer',
-                      backgroundColor: selectedRegion === city ? '#00805a' : '#ffffff',
-                      color: selectedRegion === city ? '#ffffff' : '#475569',
-                      borderColor: selectedRegion === city ? '#00805a' : '#cbd5e1'
-                    }}
-                  >
-                    {city}
-                  </button>
-                ))}
-              </div>
-
-              {/* Grid Hub Depots */}
-              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))', gap: '20px' }}>
-                {DEPOT_OUTLETS.filter(o => o.region === selectedRegion).map((outlet, idx) => (
-                  <div key={idx} style={{ padding: '24px', backgroundColor: '#f8fafc', border: '1px solid #e2e8f0', borderRadius: '16px', display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
-                    <div>
-                      <h4 style={{ margin: '0 0 8px 0', fontSize: '15px', fontWeight: '700', color: '#0f172a' }}>{outlet.name}</h4>
-                      <p style={{ margin: '0 0 12px 0', fontSize: '12px', color: '#64748b', lineHeight: '1.4' }}>{outlet.address}</p>
-                      <p style={{ margin: 0, fontSize: '12px', color: '#00805a', fontWeight: '700' }}>📞 {outlet.tel}</p>
-                    </div>
-                    <span style={{ backgroundColor: '#dcfce7', color: '#15803d', fontSize: '10px', fontWeight: '700', padding: '4px 8px', borderRadius: '6px' }}>
-                      BUKA
-                    </span>
-                  </div>
-                ))}
-              </div>
-            </div>
-          )}
-
-          {/* TAB 5: SIMULATOR PERAN (MULTI-ROLE SANDBOX) */}
-          {activeTab === 'simulator' && (
+          {/* =======================================================
+              TAB 4: MANAJEMEN LOGISTIK & TRACKING (SINKRON)
+              ======================================================= */}
+          {activeTab === 'orders' && (
             <div className="bbg-interactive-card" style={{ animation: 'fadeIn 0.4s ease' }}>
               <div style={{ borderBottom: '1px solid #e2e8f0', paddingBottom: '16px', marginBottom: '24px' }}>
-                <h3 className="bbg-card-title" style={{ marginBottom: '8px' }}>🎛️ Simulator Sandboks Multi-Peran</h3>
-                <p style={{ fontSize: '13px', color: '#64748b', margin: 0 }}>
-                  Ubah peran Anda di bawah ini untuk mensimulasikan alur pengiriman semen/pasir, konfirmasi toko, hingga tanda tangan serah terima digital.
+                <h3 style={{ margin: 0, fontSize: '18px', fontWeight: '700' }}>📦 Log Pengiriman BahanBangunGo</h3>
+                <p style={{ margin: '4px 0 0 0', fontSize: '13px', color: '#64748b' }}>
+                  Aksi & detail di bawah ini akan berganti menyesuaikan peran login simulasi Anda saat ini.
                 </p>
               </div>
 
-              {/* Selector Mode Sandbox */}
-              <div style={{ display: 'flex', gap: '8px', marginBottom: '32px', backgroundColor: '#f1f5f9', padding: '6px', borderRadius: '12px', width: 'fit-content' }}>
-                {[
-                  { id: 'customer', label: 'Konsumen', icon: '👤' },
-                  { id: 'merchant', label: 'Toko Material', icon: '🏪' },
-                  { id: 'driver', label: 'Sopir Truk', icon: '🚛' }
-                ].map(role => (
-                  <button
-                    key={role.id}
-                    onClick={() => { setActiveRole(role.id); triggerToast(`Ubah Mode Simulasi: ${role.label}`); }}
-                    style={{
-                      display: 'flex',
-                      alignItems: 'center',
-                      gap: '8px',
-                      padding: '8px 16px',
-                      borderRadius: '8px',
-                      fontSize: '13px',
-                      fontWeight: '700',
-                      border: 'none',
-                      cursor: 'pointer',
-                      backgroundColor: activeRole === role.id ? '#0f172a' : 'transparent',
-                      color: activeRole === role.id ? '#ffffff' : '#64748b'
-                    }}
-                  >
-                    <span>{role.icon}</span>
-                    <span>{role.label}</span>
-                  </button>
-                ))}
-              </div>
-
-              {/* SIMULATOR SCREEN CONTENT BY ACTIVE ROLE */}
-              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(300px, 1fr))', gap: '32px' }}>
-                
-                {/* LEFT SIDE: ACTION PANEL */}
-                <div>
-                  
-                  {/* ROLE 1: CUSTOMER VIEW */}
-                  {activeRole === 'customer' && (
-                    <div style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
-                      <h4 style={{ margin: 0, fontSize: '15px', color: '#0f172a', fontWeight: '700' }}>🛒 Panel Pelanggan (Pilih & Pantau Resi)</h4>
+              {orders.length === 0 ? (
+                <p style={{ textAlign: 'center', color: '#64748b', margin: '32px 0' }}>Belum ada rincian logistik di sistem.</p>
+              ) : (
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '24px' }}>
+                  {orders.map(order => (
+                    <div key={order.id} style={{ border: '1px solid #cbd5e1', borderRadius: '24px', padding: '24px', backgroundColor: '#ffffff' }}>
                       
-                      <div style={{ backgroundColor: '#f8fafc', padding: '16px', borderRadius: '12px', border: '1px solid #e2e8f0', fontSize: '13px' }}>
-                        <p style={{ margin: '0 0 4px 0', color: '#64748b' }}>Simulasi Paket Belanja:</p>
-                        <p style={{ margin: 0, fontWeight: '700' }}>20 Sak Semen Padang (1 Ton) - Rp 1.440.000</p>
+                      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '12px', borderBottom: '1px solid #e2e8f0', paddingBottom: '16px', marginBottom: '16px' }}>
+                        <div>
+                          <span style={{ backgroundColor: '#0f172a', color: '#ffffff', padding: '4px 8px', borderRadius: '6px', fontSize: '11px', fontWeight: '800' }}>{order.id}</span>
+                          <span style={{ fontSize: '12px', color: '#64748b', marginLeft: '12px' }}>Tanggal: {order.date}</span>
+                        </div>
+                        <span style={{ backgroundColor: '#e0f2fe', color: '#0369a1', fontSize: '12px', fontWeight: '700', padding: '6px 12px', borderRadius: '8px' }}>
+                          {order.status}
+                        </span>
                       </div>
 
-                      <div>
-                        <p style={{ fontSize: '12px', fontWeight: '700', color: '#64748b', marginBottom: '8px' }}>PILIH ID RESI UNTUK DIPANTAU:</p>
-                        <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
-                          {shipments.map(s => (
-                            <button
-                              key={s.id}
-                              onClick={() => { setSelectedShipmentId(s.id); setSearchTrackingId(s.id); triggerToast(`Memilih Resi ${s.id}`); }}
-                              style={{
-                                padding: '12px',
-                                borderRadius: '10px',
-                                border: '1px solid',
-                                cursor: 'pointer',
-                                textAlign: 'left',
-                                fontSize: '12px',
-                                fontWeight: '600',
-                                backgroundColor: selectedShipmentId === s.id ? '#f0fdf4' : '#ffffff',
-                                borderColor: selectedShipmentId === s.id ? '#00805a' : '#e2e8f0',
-                                color: selectedShipmentId === s.id ? '#00805a' : '#334155'
-                              }}
-                            >
-                              🚚 <b>{s.id}</b> ({s.item}) - {s.status}
-                            </button>
-                          ))}
+                      {/* Content details */}
+                      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(240px, 1fr))', gap: '24px' }}>
+                        <div>
+                          <h5 style={{ margin: '0 0 8px 0', fontSize: '13px', color: '#64748b', textTransform: 'uppercase' }}>Tujuan Drop-Off</h5>
+                          <p style={{ margin: 0, fontSize: '14px', fontWeight: '700' }}>📍 {order.address}</p>
+                          <p style={{ margin: '8px 0 0 0', fontSize: '13px', color: '#64748b' }}>Weight: {order.totalWeight} Kg | Volume: {order.totalVolume} m³</p>
+                        </div>
+
+                        <div>
+                          <h5 style={{ margin: '0 0 8px 0', fontSize: '13px', color: '#64748b', textTransform: 'uppercase' }}>Layanan Pendukung</h5>
+                          <p style={{ margin: 0, fontSize: '13px' }}>Kurir: <b>{order.driverName || 'Belum Ditugaskan'}</b></p>
+                          <p style={{ margin: '4px 0 0 0', fontSize: '13px' }}>Nominal: <b>Rp {order.grandTotal.toLocaleString('id-ID')}</b></p>
                         </div>
                       </div>
-                    </div>
-                  )}
 
-                  {/* ROLE 2: MERCHANT VIEW */}
-                  {activeRole === 'merchant' && (
-                    <div style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
-                      <h4 style={{ margin: 0, fontSize: '15px', color: '#0f172a', fontWeight: '700' }}>🏪 Panel Mitra Toko (Konfirmasi Material)</h4>
-                      <p style={{ fontSize: '13px', color: '#475569', margin: 0 }}>
-                        Gunakan simulator tombol di bawah untuk menggerakkan status pengiriman kurir di database BahanBangunGo.
-                      </p>
+                      {/* =======================================================
+                          DYNAMIC ACTIONS BY CURRENT ROLE
+                          ======================================================= */}
+                      <div style={{ borderTop: '1px solid #e2e8f0', marginTop: '20px', paddingTop: '16px', display: 'flex', flexWrap: 'wrap', gap: '12px', justifyContent: 'flex-end' }}>
+                        
+                        {/* 1. ADMIN ACTIONS */}
+                        {role === 'admin' && order.status === 'Menunggu Konfirmasi Admin' && (
+                          <button onClick={() => handleAdminApprove(order.id)} className="bbg-btn-primary">
+                            🛡️ Setujui & Berikan Tugas ke Toko
+                          </button>
+                        )}
 
-                      <div style={{ display: 'flex', gap: '12px' }}>
-                        <button onClick={handleSimulateProgress} className="bbg-btn-primary">
-                          ⚡ Jalankan Kurir (Update Progress)
-                        </button>
-                        <button 
-                          onClick={() => { setShipments(INITIAL_SHIPMENTS); triggerToast('Database simulasi disetel ulang'); }}
-                          style={{ padding: '12px 20px', borderRadius: '12px', border: '1px solid #cbd5e1', backgroundColor: '#ffffff', color: '#475569', fontSize: '13px', fontWeight: '700', cursor: 'pointer' }}
-                        >
-                          Reset Data
-                        </button>
-                      </div>
-                    </div>
-                  )}
+                        {/* 2. MITRA TOKO ACTIONS */}
+                        {role === 'merchant' && order.status === 'Disiapkan oleh Toko' && (
+                          <button onClick={() => handleMerchantReady(order.id)} className="bbg-btn-primary">
+                            🏪 Kemas Material & Panggil Driver
+                          </button>
+                        )}
 
-                  {/* ROLE 3: DRIVER VIEW */}
-                  {activeRole === 'driver' && (
-                    <div style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
-                      <h4 style={{ margin: 0, fontSize: '15px', color: '#0f172a', fontWeight: '700' }}>🚛 Aplikasi Sopir (Bukti Pengiriman - PoD)</h4>
-                      <p style={{ fontSize: '12px', color: '#64748b', margin: 0 }}>
-                        Gunakan modul ini di lokasi bongkar muatan semen/pasir proyek untuk meminta bukti foto & tanda tangan penerima.
-                      </p>
+                        {/* 3. KURIR / DRIVER ACTION CANVAS */}
+                        {role === 'driver' && order.status === 'Dalam Perjalanan' && (
+                          <div style={{ width: '100%', display: 'flex', flexDirection: 'column', gap: '16px', backgroundColor: '#f8fafc', padding: '16px', borderRadius: '16px' }}>
+                            <h5 style={{ margin: 0, fontSize: '13px', fontWeight: '700' }}>✍️ Serah Terima PoD Kurir</h5>
+                            
+                            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '16px' }}>
+                              
+                              {/* Photo capture simulation */}
+                              <div style={{ border: '1px dashed #cbd5e1', borderRadius: '12px', padding: '16px', textAlign: 'center', backgroundColor: '#ffffff' }}>
+                                {podPhoto ? (
+                                  <div>
+                                    <img src={podPhoto} alt="PoD" style={{ width: '100%', maxHeight: '100px', objectFit: 'cover', borderRadius: '8px' }} />
+                                    <button onClick={() => setPodPhoto(null)} style={{ border: 'none', background: 'none', color: '#ef4444', fontSize: '11px', fontWeight: '700', cursor: 'pointer', marginTop: '8px' }}>Hapus Foto</button>
+                                  </div>
+                                ) : (
+                                  <button onClick={() => setPodPhoto('https://images.unsplash.com/photo-1590069261209-f8e9b8642343?auto=format&fit=crop&w=600&q=80')} style={{ cursor: 'pointer', border: 'none', background: 'none', fontSize: '12px', fontWeight: '700', color: '#00805a' }}>📷 Ambil Foto Material</button>
+                                )}
+                              </div>
 
-                      {/* Photo upload mock */}
-                      <div style={{ border: '1px dashed #cbd5e1', borderRadius: '16px', padding: '20px', textAlign: 'center', backgroundColor: '#f8fafc' }}>
-                        {podPhoto ? (
-                          <div style={{ position: 'relative' }}>
-                            <img src={podPhoto} alt="POD" style={{ width: '100%', maxHeight: '140px', objectFit: 'cover', borderRadius: '8px' }} />
+                              {/* Signature Canvas Pad */}
+                              <div style={{ border: '1px solid #cbd5e1', borderRadius: '12px', padding: '12px', backgroundColor: '#ffffff' }}>
+                                <canvas
+                                  ref={canvasRef}
+                                  onMouseDown={startDrawing}
+                                  onMouseMove={draw}
+                                  onMouseUp={() => setIsDrawing(false)}
+                                  onTouchStart={startDrawing}
+                                  onTouchMove={draw}
+                                  onTouchEnd={() => setIsDrawing(false)}
+                                  style={{ width: '100%', height: '80px', border: '1px solid #e2e8f0', borderRadius: '6px', cursor: 'crosshair', display: 'block' }}
+                                />
+                                {signatureSaved && <div style={{ fontSize: '10px', color: '#00805a', fontWeight: '700', marginTop: '4px' }}>✓ Tanda tangan tersimpan</div>}
+                                <div style={{ display: 'flex', justifyContent: 'space-between', marginTop: '4px' }}>
+                                  <button onClick={clearSignature} style={{ border: 'none', background: 'none', color: '#ef4444', fontSize: '10px', cursor: 'pointer' }}>Clear</button>
+                                  <button onClick={saveSignature} style={{ border: 'none', background: 'none', color: '#00805a', fontSize: '10px', cursor: 'pointer' }}>Lock TTD</button>
+                                </div>
+                              </div>
+
+                            </div>
+
                             <button 
-                              onClick={() => setPodPhoto(null)}
-                              style={{ position: 'absolute', top: '8px', right: '8px', backgroundColor: '#ef4444', color: '#ffffff', border: 'none', borderRadius: '4px', fontSize: '10px', padding: '4px 8px', cursor: 'pointer' }}
+                              onClick={() => handleDriverDeliver(order.id)} 
+                              disabled={!podPhoto || !signatureSaved}
+                              className="bbg-btn-primary" 
+                              style={{ width: 'fit-content', alignSelf: 'flex-end', opacity: (podPhoto && signatureSaved) ? 1 : 0.5 }}
                             >
-                              Hapus
-                            </button>
-                          </div>
-                        ) : (
-                          <div>
-                            <span style={{ fontSize: '28px', display: 'block', marginBottom: '8px' }}>📷</span>
-                            <p style={{ margin: '0 0 10px 0', fontSize: '12px', fontWeight: '700' }}>Ambil Foto Material Bongkar</p>
-                            <button 
-                              onClick={() => setPodPhoto('https://images.unsplash.com/photo-1590069261209-f8e9b8642343?auto=format&fit=crop&w=600&q=80')}
-                              style={{ padding: '6px 12px', fontSize: '11px', fontWeight: '700', borderRadius: '6px', border: '1px solid #cbd5e1', backgroundColor: '#ffffff', cursor: 'pointer' }}
-                            >
-                              Gunakan Kamera Simulasi
+                              Selesaikan Antaran & Cairkan Dana Escrow ✔️
                             </button>
                           </div>
                         )}
+
+                        {/* Default Info */}
+                        {order.status === 'Selesai' && (
+                          <div style={{ display: 'flex', alignItems: 'center', gap: '8px', color: '#00805a', fontSize: '13px', fontWeight: '700' }}>
+                            <span>✓ Pengiriman Sukses</span>
+                            <span>🔒 Dana Dilepas</span>
+                          </div>
+                        )}
+
                       </div>
 
-                      {/* Signature Canvas */}
-                      <div style={{ border: '1px solid #cbd5e1', borderRadius: '16px', padding: '16px', backgroundColor: '#ffffff' }}>
-                        <p style={{ margin: '0 0 8px 0', fontSize: '11px', fontWeight: '700', color: '#64748b', textTransform: 'uppercase' }}>Tanda Tangan Penerima:</p>
-                        
-                        <div style={{ height: '90px', border: '1px solid #e2e8f0', borderRadius: '8px', position: 'relative', overflow: 'hidden' }}>
-                          <canvas
-                            ref={canvasRef}
-                            onMouseDown={startDrawing}
-                            onMouseMove={draw}
-                            onMouseUp={() => setIsDrawing(false)}
-                            onTouchStart={startDrawing}
-                            onTouchMove={draw}
-                            onTouchEnd={() => setIsDrawing(false)}
-                            style={{ display: 'block', width: '100%', height: '100%', cursor: 'crosshair' }}
-                          />
-                          {signatureSaved && (
-                            <div style={{ position: 'absolute', inset: 0, backgroundColor: 'rgba(220, 252, 231, 0.9)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '12px', fontWeight: '700', color: '#15803d' }}>
-                              ✅ Tanda Tangan Terkunci
-                            </div>
-                          )}
-                        </div>
-
-                        <div style={{ display: 'flex', justifyContent: 'space-between', marginTop: '10px' }}>
-                          <button 
-                            onClick={() => {
-                              const canvas = canvasRef.current;
-                              if (canvas) {
-                                const ctx = canvas.getContext('2d');
-                                ctx.clearRect(0, 0, canvas.width, canvas.height);
-                                setSignatureSaved(false);
-                              }
-                            }}
-                            style={{ border: 'none', background: 'none', color: '#ef4444', fontSize: '11px', fontWeight: '700', cursor: 'pointer' }}
-                          >
-                            Hapus TTD
-                          </button>
-                          <button 
-                            onClick={saveSignature}
-                            style={{ border: 'none', background: 'none', color: '#00805a', fontSize: '11px', fontWeight: '700', cursor: 'pointer' }}
-                          >
-                            Kunci TTD
-                          </button>
-                        </div>
-                      </div>
-
-                      <button
-                        onClick={() => handleCompleteDelivery(selectedShipmentId)}
-                        disabled={!podPhoto || !signatureSaved}
-                        className="bbg-btn-primary"
-                        style={{ opacity: (podPhoto && signatureSaved) ? 1 : 0.5, cursor: (podPhoto && signatureSaved) ? 'pointer' : 'not-allowed' }}
-                      >
-                        Selesaikan Pengantaran Paket ✔️
-                      </button>
                     </div>
-                  )}
-
+                  ))}
                 </div>
+              )}
 
-                {/* RIGHT SIDE: HUB DATABASE MONITOR */}
-                <div style={{ backgroundColor: '#f8fafc', padding: '24px', borderRadius: '20px', border: '1px solid #e2e8f0' }}>
-                  <h4 style={{ margin: '0 0 16px 0', fontSize: '13px', color: '#64748b', fontWeight: '700', textTransform: 'uppercase', letterSpacing: '0.05em' }}>
-                    Monitor Basis Data (Database Hub)
-                  </h4>
+            </div>
+          )}
 
-                  <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
-                    {shipments.map(s => (
-                      <div 
-                        key={s.id} 
-                        style={{ padding: '16px', backgroundColor: '#ffffff', borderRadius: '12px', border: '1px solid #cbd5e1', fontSize: '12px' }}
-                      >
-                        <div style={{ display: 'flex', justifyContent: 'space-between', fontWeight: '700', marginBottom: '4px' }}>
-                          <span style={{ color: '#0f172a' }}>{s.id}</span>
-                          <span style={{ color: '#00805a' }}>{s.status}</span>
-                        </div>
-                        <p style={{ margin: '0 0 8px 0', color: '#64748b' }}>{s.item}</p>
-                        
-                        {/* mini progress fills */}
-                        <div style={{ height: '4px', backgroundColor: '#e2e8f0', borderRadius: '2px', overflow: 'hidden' }}>
-                          <div style={{ height: '100%', backgroundColor: '#00805a', width: `${s.progress}%` }}></div>
-                        </div>
-                      </div>
-                    ))}
+          {/* =======================================================
+              TAB 5: KOORDINATOR CHAT (DYNAMICS)
+              ======================================================= */}
+          {activeTab === 'chat' && (
+            <div className="bbg-interactive-card" style={{ animation: 'fadeIn 0.4s ease', maxWidth: '600px', margin: '0 auto' }}>
+              <div style={{ borderBottom: '1px solid #e2e8f0', paddingBottom: '16px', marginBottom: '16px' }}>
+                <h3 style={{ margin: 0, fontSize: '16px', fontWeight: '700' }}>💬 Chat Koordinasi Hub</h3>
+                <p style={{ margin: '4px 0 0 0', fontSize: '12px', color: '#64748b' }}>Peran Anda saat ini: <b style={{ textTransform: 'uppercase' }}>{role}</b></p>
+              </div>
+
+              {/* Msg Box */}
+              <div style={{ height: '240px', overflowY: 'auto', display: 'flex', flexDirection: 'column', gap: '12px', padding: '10px', backgroundColor: '#f8fafc', borderRadius: '16px' }}>
+                {chats.map(chat => (
+                  <div key={chat.id} style={{ alignSelf: chat.sender === role ? 'flex-end' : 'flex-start', maxWidth: '80%' }}>
+                    <span style={{ fontSize: '10px', color: '#64748b', display: 'block', textTransform: 'uppercase', marginBottom: '2px', textAlign: chat.sender === role ? 'right' : 'left' }}>{chat.sender}</span>
+                    <div style={{ padding: '12px 16px', borderRadius: '16px', fontSize: '13px', backgroundColor: chat.sender === role ? '#00805a' : '#ffffff', color: chat.sender === role ? '#ffffff' : '#1e293b', border: chat.sender === role ? 'none' : '1px solid #cbd5e1' }}>
+                      {chat.text}
+                    </div>
                   </div>
-                </div>
+                ))}
+              </div>
 
+              {/* Chat Send */}
+              <div style={{ display: 'flex', gap: '12px', marginTop: '16px' }}>
+                <input 
+                  type="text" 
+                  value={newMsg} 
+                  onChange={(e) => setNewMsg(e.target.value)} 
+                  onKeyDown={(e) => e.key === 'Enter' && handleSendChat()}
+                  placeholder="Tulis balasan koordinasi..." 
+                  className="bbg-form-control" 
+                />
+                <button onClick={handleSendChat} className="bbg-btn-primary">Kirim</button>
               </div>
             </div>
           )}
@@ -1383,100 +1037,6 @@ export default function App() {
         </footer>
 
       </main>
-
-      {/* ==========================================
-          FLOATING QUICK ACTIONS WIDGETS
-          ========================================== */}
-      <div className="bbg-floating-widget">
-        <button onClick={() => { setActiveTab('price'); triggerToast('Membuka Kalkulator Ongkos Kirim'); }} title="Cek Tarif" className="bbg-floating-btn">📊</button>
-        <button onClick={() => { setActiveTab('outlet'); triggerToast('Membuka Peta Lokasi Depot'); }} title="Lokasi Hub" className="bbg-floating-btn">📍</button>
-        <button onClick={() => setShowVipModal(true)} title="VIP Registrasi" className="bbg-floating-btn">👑</button>
-      </div>
-
-      {/* ==========================================
-          MODAL REGISTRASI VIP CLIENT (B2B PORTAL)
-          ========================================== */}
-      {showVipModal && (
-        <div className="bbg-modal-overlay">
-          <div className="bbg-modal-card">
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '16px' }}>
-              <h3 style={{ margin: 0, fontSize: '18px', fontWeight: '800', color: '#0f172a' }}>👑 Pengajuan VIP Client B2B</h3>
-              <button 
-                onClick={() => setShowVipModal(false)}
-                style={{ background: 'none', border: 'none', fontSize: '20px', cursor: 'pointer', color: '#64748b' }}
-              >
-                ✕
-              </button>
-            </div>
-            
-            <p style={{ fontSize: '12px', color: '#64748b', marginBottom: '24px', lineHeight: '1.5' }}>
-              Dapatkan keuntungan pembayaran tempo 30 hari, proteksi jaminan anti-ODOL secara gratis, flat-rate pengiriman 10%, dan bantuan prioritas armada.
-            </p>
-
-            <form 
-              onSubmit={(e) => {
-                e.preventDefault();
-                setShowVipModal(false);
-                triggerToast(`Sukses mendaftarkan perusahaan ${vipForm.company}! Tim B2B kami akan segera menghubungi Anda.`);
-              }}
-              style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}
-            >
-              <div>
-                <label style={{ display: 'block', fontSize: '11px', fontWeight: '700', color: '#64748b', textTransform: 'uppercase', marginBottom: '4px' }}>Nama Perusahaan</label>
-                <input 
-                  type="text" 
-                  value={vipForm.company}
-                  onChange={(e) => setVipForm({ ...vipForm, company: e.target.value })}
-                  placeholder="Contoh: PT. Adhi Karya Semesta"
-                  className="bbg-form-control"
-                  required
-                />
-              </div>
-
-              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px' }}>
-                <div>
-                  <label style={{ display: 'block', fontSize: '11px', fontWeight: '700', color: '#64748b', textTransform: 'uppercase', marginBottom: '4px' }}>Nama PIC</label>
-                  <input 
-                    type="text" 
-                    value={vipForm.pic}
-                    onChange={(e) => setVipForm({ ...vipForm, pic: e.target.value })}
-                    placeholder="Nama Anda"
-                    className="bbg-form-control"
-                    required
-                  />
-                </div>
-                <div>
-                  <label style={{ display: 'block', fontSize: '11px', fontWeight: '700', color: '#64748b', textTransform: 'uppercase', marginBottom: '4px' }}>Nomor HP</label>
-                  <input 
-                    type="text" 
-                    value={vipForm.phone}
-                    onChange={(e) => setVipForm({ ...vipForm, phone: e.target.value })}
-                    placeholder="Nomor Telepon"
-                    className="bbg-form-control"
-                    required
-                  />
-                </div>
-              </div>
-
-              <div>
-                <label style={{ display: 'block', fontSize: '11px', fontWeight: '700', color: '#64748b', textTransform: 'uppercase', marginBottom: '4px' }}>Alamat Kantor</label>
-                <textarea 
-                  value={vipForm.address}
-                  onChange={(e) => setVipForm({ ...vipForm, address: e.target.value })}
-                  placeholder="Alamat Lengkap Perusahaan"
-                  className="bbg-form-control"
-                  style={{ height: '70px', resize: 'none' }}
-                  required
-                />
-              </div>
-
-              <button type="submit" className="bbg-btn-primary" style={{ marginTop: '10px' }}>
-                KIRIM PENGAJUAN VIP PROYEK 🚀
-              </button>
-            </form>
-          </div>
-        </div>
-      )}
 
     </div>
   );
