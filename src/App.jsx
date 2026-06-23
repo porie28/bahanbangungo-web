@@ -1,1707 +1,1478 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 
-// ==========================================
-// DUMMY STATE DATABASE (MUTABLE)
-// ==========================================
-const INITIAL_MEMBERS = [
-  { id: 'MEM-9021', name: 'Ahmad Supriadi', email: 'ahmad.supriadi@workmail.com', role: 'Premium Contractor', status: 'Active', joinedDate: '2026-04-12' },
-  { id: 'MEM-4412', name: 'Siti Rahmawati', email: 'siti.rahma@konstruksindo.id', role: 'Supplier Partner', status: 'Active', joinedDate: '2026-05-18' },
-  { id: 'MEM-8873', name: 'Budi Hartono', email: 'budi.hartono@semenjaya.com', role: 'Architect Partner', status: 'Pending', joinedDate: '2026-06-01' },
-  { id: 'MEM-1190', name: 'Dewi Lestari', email: 'dewi.lestari@saranabaja.co.id', role: 'VVIP Client', status: 'Suspended', joinedDate: '2025-11-20' }
+const INITIAL_SHIPMENTS = [
+  {
+    id: 'BBG-998122',
+    item: '20 Sak Semen Gresik (1 Ton)',
+    sender: 'Depo Pusat Cengkareng, Jakarta Barat',
+    receiver: 'Proyek Cluster Harmoni, Tangerang',
+    status: 'Dalam Perjalanan',
+    statusDetail: 'Kurir sedang menuju lokasi proyek melalui jalan Tol Jakarta-Tangerang.',
+    driver: 'Pak Rudi Santoso',
+    fleet: 'Truk Engkel CDE',
+    progress: 65,
+    eta: '45 Menit',
+    weight: 1000,
+    volume: 0.7,
+    date: '23 Juni 2026',
+    history: [
+      { status: 'Pesanan Dibuat', time: '10:00 AM', desc: 'Sistem mengunci pembayaran escrow.' },
+      { status: 'Dikonfirmasi', time: '10:15 AM', desc: 'Merchant menyiapkan material semen.' },
+      { status: 'Picked Up', time: '11:00 AM', desc: 'Semen dimuat ke armada CDE.' },
+      { status: 'Dalam Perjalanan', time: '11:30 AM', desc: 'Truk melintasi tol Jakarta-Tangerang.' }
+    ]
+  },
+  {
+    id: 'BBG-776655',
+    item: 'Pasir Cor Merapi (1.5 m³)',
+    sender: 'Depo Tambang Merak, Banten',
+    receiver: 'Gudang Konstruksi Sudirman, Jakarta Selatan',
+    status: 'Disiapkan oleh Toko',
+    statusDetail: 'Barang sedang dimuat ke dalam armada dump truck.',
+    driver: 'Pak Budi Wijaya',
+    fleet: 'Truk Double CDD',
+    progress: 25,
+    eta: '2 Jam 15 Menit',
+    weight: 2100,
+    volume: 1.5,
+    date: '23 Juni 2026',
+    history: [
+      { status: 'Pesanan Dibuat', time: '09:00 AM', desc: 'Pesanan masuk ke sistem antrean.' },
+      { status: 'Disiapkan oleh Toko', time: '09:30 AM', desc: 'Alat berat mulai memuat pasir.' }
+    ]
+  },
+  {
+    id: 'BBG-112233',
+    item: 'Besi Beton SNI 10mm (50 Batang)',
+    sender: 'Pabrik Baja Cilegon, Serang',
+    receiver: 'Pembangunan Ruko Daan Mogot, Jakarta Barat',
+    status: 'Selesai',
+    statusDetail: 'Barang telah diterima oleh Bp. Ahmad (Kepala Tukang).',
+    driver: 'Pak Aris Nugroho',
+    fleet: 'Truk Double CDD',
+    progress: 100,
+    eta: 'Tiba di Lokasi',
+    weight: 600,
+    volume: 0.25,
+    date: '22 Juni 2026',
+    history: [
+      { status: 'Pesanan Dibuat', time: 'Yesterday', desc: 'Transaksi tervalidasi.' },
+      { status: 'Disiapkan oleh Toko', time: 'Yesterday', desc: 'Besi beton diikat aman.' },
+      { status: 'Dalam Perjalanan', time: 'Yesterday', desc: 'Perjalanan lancar via arteri.' },
+      { status: 'Selesai', time: 'Yesterday', desc: 'Diterima & TTD digital diverifikasi.' }
+    ]
+  }
 ];
 
-const INITIAL_BLOGS = [
-  { id: 'BLOG-1', title: '5 Tren Baja Ringan untuk Proyek Infrastruktur 2026', author: 'Siti Rahmawati', category: 'Inovasi', status: 'Published', views: 1420, date: '2026-06-15' },
-  { id: 'BLOG-2', title: 'Tips Menghindari ODOL (Over Loading) pada Truk Engkel CDE', author: 'Ahmad Supriadi', category: 'Logistik', status: 'Published', views: 980, date: '2026-06-20' },
-  { id: 'BLOG-3', title: 'Strategi Negosiasi Termin Tempo 30 Hari bagi Kontraktor Baru', author: 'Budi Hartono', category: 'Keuangan', status: 'Draft', views: 0, date: '2026-06-23' }
+const DEPOT_OUTLETS = [
+  { region: 'Jakarta', name: 'Hub Utama Jakarta Barat - Cengkareng', address: 'Jl. Lingkar Luar No. 45, Cengkareng', tel: '+62 21-5544-3322' },
+  { region: 'Jakarta', name: 'Hub Jakarta Timur - Cakung', address: 'Kawasan Industri Pulogadung Blok C, Cakung', tel: '+62 21-5544-7788' },
+  { region: 'Tangerang', name: 'Hub Tangerang Raya - Batuceper', address: 'Jl. Pembangunan III No. 12, Batuceper', tel: '+62 21-5577-9911' },
+  { region: 'Bekasi', name: 'Hub Bekasi - Tambun', address: 'Jl. Sultan Hasanuddin No. 88, Tambun Selatan', tel: '+62 21-8899-2211' },
+  { region: 'Bandung', name: 'Hub Priangan - Soekarno Hatta', address: 'Jl. Soekarno-Hatta No. 624, Bandung', tel: '+62 22-7788-5544' }
 ];
 
-const INITIAL_REDEEMS = [
-  { id: 'RED-501', member: 'Ahmad Supriadi', item: 'E-Wallet Balance Rp 500.000', points: 500, status: 'Pending', date: '2026-06-21' },
-  { id: 'RED-502', member: 'Siti Rahmawati', item: 'Voucher BBM Solar Industri 100 Liter', points: 1200, status: 'Approved', date: '2026-06-19' },
-  { id: 'RED-503', member: 'Dewi Lestari', item: 'Helm Keselamatan Kerja Proyek VVIP', points: 350, status: 'Rejected', date: '2026-06-14' }
+const PRODUCT_CATEGORIES = [
+  { id: 'semen', name: 'Semen', icon: '🧱', count: '12 Varian' },
+  { id: 'pasir', name: 'Pasir & Kerikil', icon: '⏳', count: '5 Jenis' },
+  { id: 'besi', name: 'Besi & Baja', icon: '⛓️', count: '18 Ukuran' },
+  { id: 'cat', name: 'Cat & Pelapis', icon: '🎨', count: '24 Warna' },
+  { id: 'alat', name: 'Alat Berat', icon: '🚜', count: '4 Armada' }
+];
+
+const SLIDER_PHOTOS = [
+  {
+    id: 1,
+    title: 'PAKET BESAR & MATERIAL PROYEK, CARI BAHANBANGUNGO!',
+    desc: 'Pengiriman semen curah, pasir tambang, dan besi beton struktural dijamin aman dengan perlindungan anti-ODOL serta sistem lacak GPS real-time.',
+    badge: '⚡ CARGO PREMIUM',
+    bgGradient: 'linear-gradient(135deg, #004d34 0%, #00805a 100%)'
+  },
+  {
+    id: 2,
+    title: '👑 REGISTRASI VIP CLIENT UNTUK KONTRAKTOR PROYEK',
+    desc: 'Nikmati kemudahan pembayaran termin (Tempo 30 Hari), diskon tarif pengiriman flat-rate 10%, serta fasilitas bebas biaya kuli bongkar di lokasi.',
+    badge: '💎 MEMBER B2B',
+    bgGradient: 'linear-gradient(135deg, #0f172a 0%, #1e293b 100%)'
+  },
+  {
+    id: 3,
+    title: '🛠️ KEAMANAN MUATAN PRIORITAS JALAN RAYA',
+    desc: 'Sistem logistik kami dilengkapi kecerdasan konversi berat-volume otomatis untuk merekomendasikan armada yang tepat sesuai regulasi jalan raya nasional.',
+    badge: '🛡️ GARANSI ANTI-ODOL',
+    bgGradient: 'linear-gradient(135deg, #78350f 0%, #b45309 100%)'
+  }
 ];
 
 export default function App() {
-  const [activeTab, setActiveTab] = useState('members'); // members | blog | redeem | settings
-  const [members, setMembers] = useState(INITIAL_MEMBERS);
-  const [blogs, setBlogs] = useState(INITIAL_BLOGS);
-  const [redeems, setRedeems] = useState(INITIAL_REDEEMS);
+  const [activeTab, setActiveTab] = useState('dashboard'); // dashboard | tracking | price | outlet | simulator
+  const [shipments, setShipments] = useState(INITIAL_SHIPMENTS);
+  const [selectedShipmentId, setSelectedShipmentId] = useState('BBG-998122');
+  const [searchTrackingId, setSearchTrackingId] = useState('BBG-998122');
+  const [activeRole, setActiveRole] = useState('customer'); // customer | merchant | driver
   
-  // Search & Filter State
-  const [searchQuery, setSearchQuery] = useState('');
-  const [filterStatus, setFilterStatus] = useState('all');
+  // Carousel Slider State
+  const [currentSlide, setCurrentSlide] = useState(0);
 
-  // Modals Controller State
-  const [showMemberModal, setShowMemberModal] = useState(false);
-  const [showBlogModal, setShowBlogModal] = useState(false);
-  
-  // Form States
-  const [memberForm, setMemberForm] = useState({ name: '', email: '', role: 'Premium Contractor' });
-  const [blogForm, setBlogForm] = useState({ title: '', category: 'Inovasi', content: '' });
+  // State untuk Kalkulator Tarif (Cek Harga)
+  const [calcWeight, setCalcWeight] = useState(1500); // dalam Kg
+  const [calcVolume, setCalcVolume] = useState(1.2); // dalam m³
+  const [calcDistance, setCalcDistance] = useState(25); // dalam Km
+  const [calcFleet, setCalcFleet] = useState('engkel'); // pickup | engkel | double
+  const [helperService, setHelperService] = useState(true);
+  const [calculatedPrice, setCalculatedPrice] = useState(0);
+  const [odolAlert, setOdolAlert] = useState(false);
 
-  // System Notifications
-  const [toast, setToast] = useState(null);
+  // State untuk Pencarian Outlet
+  const [selectedRegion, setSelectedRegion] = useState('Jakarta');
 
-  // Stats Ranges
-  const [statsPeriod, setStatsPeriod] = useState('monthly'); // daily | weekly | monthly
+  // State untuk Registrasi VIP Client
+  const [showVipModal, setShowVipModal] = useState(false);
+  const [vipForm, setVipForm] = useState({ company: '', pic: '', phone: '', address: '' });
 
-  const triggerToast = (msg, type = 'success') => {
-    setToast({ text: msg, type });
-    setTimeout(() => setToast(null), 3000);
-  };
+  // State Toast Pemberitahuan
+  const [toastMessage, setToastMessage] = useState(null);
 
-  const totalActiveMembers = members.filter(m => m.status === 'Active').length;
-  const totalPublishedBlogs = blogs.filter(b => b.status === 'Published').length;
-  const totalPendingRedeems = redeems.filter(r => r.status === 'Pending').length;
-  
-  // Total Points Redeemed (Sum points of Approved status)
-  const totalPointsRedeemed = redeems
-    .filter(r => r.status === 'Approved')
-    .reduce((sum, item) => sum + item.points, 0);
+  // State Tanda Tangan Driver (Canvas)
+  const canvasRef = useRef(null);
+  const [isDrawing, setIsDrawing] = useState(false);
+  const [signatureSaved, setSignatureSaved] = useState(false);
+  const [podPhoto, setPodPhoto] = useState(null);
 
-  const handleAddMember = (e) => {
-    e.preventDefault();
-    if (!memberForm.name || !memberForm.email) {
-      triggerToast('Mohon lengkapi semua data formulir anggota!', 'error');
-      return;
+  useEffect(() => {
+    const timer = setInterval(() => {
+      setCurrentSlide((prev) => (prev + 1) % SLIDER_PHOTOS.length);
+    }, 6000);
+    return () => clearInterval(timer);
+  }, []);
+
+  useEffect(() => {
+    let baseFare = 150000;
+    let ratePerKm = 8000;
+    let maxCapacity = 3000; // Default Truk Engkel CDE
+
+    if (calcFleet === 'pickup') {
+      baseFare = 75000;
+      ratePerKm = 5000;
+      maxCapacity = 1500;
+    } else if (calcFleet === 'double') {
+      baseFare = 250000;
+      ratePerKm = 12000;
+      maxCapacity = 7000;
     }
-    const newMember = {
-      id: 'MEM-' + Math.floor(1000 + Math.random() * 9000),
-      name: memberForm.name,
-      email: memberForm.email,
-      role: memberForm.role,
-      status: 'Active',
-      joinedDate: new Date().toISOString().split('T')[0]
-    };
-    setMembers([newMember, ...members]);
-    setMemberForm({ name: '', email: '', role: 'Premium Contractor' });
-    setShowMemberModal(false);
-    triggerToast(`Anggota "${newMember.name}" berhasil ditambahkan ke database!`);
-  };
 
-  const handleAddBlog = (e) => {
-    e.preventDefault();
-    if (!blogForm.title) {
-      triggerToast('Judul artikel wajib diisi!', 'error');
-      return;
+    // Hitung total tarif
+    let total = baseFare + (calcDistance * ratePerKm);
+    if (helperService) total += 50000; // Biaya kuli bongkar flat rate
+
+    setCalculatedPrice(total);
+
+    // Deteksi ODOL (Over Dimension Over Loading)
+    if (calcWeight > maxCapacity) {
+      setOdolAlert(true);
+    } else {
+      setOdolAlert(false);
     }
-    const newBlog = {
-      id: 'BLOG-' + (blogs.length + 1),
-      title: blogForm.title,
-      author: 'Administrator Hub',
-      category: blogForm.category,
-      status: 'Published',
-      views: 0,
-      date: new Date().toISOString().split('T')[0]
-    };
-    setBlogs([newBlog, ...blogs]);
-    setBlogForm({ title: '', category: 'Inovasi', content: '' });
-    setShowBlogModal(false);
-    triggerToast('Artikel blog baru berhasil diterbitkan secara live!');
+  }, [calcWeight, calcVolume, calcDistance, calcFleet, helperService]);
+
+  // Trigger Notifikasi Toast
+  const triggerToast = (msg) => {
+    setToastMessage(msg);
+    setTimeout(() => setToastMessage(null), 3500);
   };
 
-  const handleApproveRedeem = (id) => {
-    setRedeems(prev => prev.map(r => r.id === id ? { ...r, status: 'Approved' } : r));
-    triggerToast('Permintaan penukaran poin disetujui, bonus segera dikirim!');
-  };
-
-  const handleRejectRedeem = (id) => {
-    setRedeems(prev => prev.map(r => r.id === id ? { ...r, status: 'Rejected' } : r));
-    triggerToast('Permintaan penukaran poin ditolak oleh administrator.', 'warning');
-  };
-
-  const handleDeleteMember = (id) => {
-    setMembers(prev => prev.filter(m => m.id !== id));
-    triggerToast('Anggota berhasil dihapus dari sistem pengawasan.', 'warning');
-  };
-
-  const filteredMembers = members.filter(m => {
-    const matchesSearch = m.name.toLowerCase().includes(searchQuery.toLowerCase()) || 
-                          m.email.toLowerCase().includes(searchQuery.toLowerCase()) || 
-                          m.id.toLowerCase().includes(searchQuery.toLowerCase());
-    const matchesStatus = filterStatus === 'all' || m.status.toLowerCase() === filterStatus.toLowerCase();
-    return matchesSearch && matchesStatus;
-  });
-
-  const filteredBlogs = blogs.filter(b => 
-    b.title.toLowerCase().includes(searchQuery.toLowerCase()) || 
-    b.category.toLowerCase().includes(searchQuery.toLowerCase())
+  // Mencari Detail Shipments berdasarkan ID
+  const searchedShipment = shipments.find(
+    s => s.id.toLowerCase().trim() === searchTrackingId.toLowerCase().trim()
   );
 
+  const handleSimulateProgress = () => {
+    setShipments(prev => prev.map(s => {
+      if (s.id === selectedShipmentId) {
+        if (s.progress >= 100) {
+          triggerToast(`Muatan ${s.id} sudah selesai dikirim.`);
+          return s;
+        }
+        const nextProgress = Math.min(s.progress + 25, 100);
+        let nextStatus = s.status;
+        let nextDetail = s.statusDetail;
+
+        if (nextProgress === 100) {
+          nextStatus = 'Selesai';
+          nextDetail = 'Muatan telah sukses diserahterimakan dan ditandatangani.';
+        } else if (nextProgress > 75) {
+          nextStatus = 'Dalam Perjalanan';
+          nextDetail = 'Kurir telah keluar tol dan memasuki rute jalan raya kota tujuan.';
+        } else if (nextProgress > 50) {
+          nextStatus = 'Dalam Perjalanan';
+          nextDetail = 'Kurir sedang berada di rest area tol KM 57.';
+        }
+
+        const newHistory = [...s.history, {
+          status: nextStatus,
+          time: new Date().toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit' }),
+          desc: nextDetail
+        }];
+
+        triggerToast(`Status logistik ${s.id} berhasil diperbarui!`);
+        return { ...s, progress: nextProgress, status: nextStatus, statusDetail: nextDetail, eta: nextProgress === 100 ? 'Tiba' : s.eta, history: newHistory };
+      }
+      return s;
+    }));
+  };
+
+  const startDrawing = (e) => {
+    const canvas = canvasRef.current;
+    if (!canvas) return;
+    const ctx = canvas.getContext('2d');
+    ctx.lineWidth = 3;
+    ctx.lineCap = 'round';
+    ctx.strokeStyle = '#0f172a';
+    const rect = canvas.getBoundingClientRect();
+    const clientX = e.clientX || (e.touches && e.touches[0].clientX);
+    const clientY = e.clientY || (e.touches && e.touches[0].clientY);
+    const x = clientX - rect.left;
+    const y = clientY - rect.top;
+    ctx.beginPath();
+    ctx.moveTo(x, y);
+    setIsDrawing(true);
+  };
+
+  const draw = (e) => {
+    if (!isDrawing) return;
+    const canvas = canvasRef.current;
+    const ctx = canvas.getContext('2d');
+    const rect = canvas.getBoundingClientRect();
+    const clientX = e.clientX || (e.touches && e.touches[0].clientX);
+    const clientY = e.clientY || (e.touches && e.touches[0].clientY);
+    const x = clientX - rect.left;
+    const y = clientY - rect.top;
+    ctx.lineTo(x, y);
+    ctx.stroke();
+  };
+
+  const saveSignature = () => {
+    setSignatureSaved(true);
+    triggerToast('Tanda tangan digital penerima berhasil dikunci!');
+  };
+
+  const handleCompleteDelivery = (shipmentId) => {
+    setShipments(prev => prev.map(s => {
+      if (s.id === shipmentId) {
+        return {
+          ...s,
+          status: 'Selesai',
+          statusDetail: 'Selesai. Barang diterima dengan baik di lokasi proyek.',
+          progress: 100,
+          eta: 'Tiba',
+          history: [...s.history, { status: 'Selesai', time: 'Just Now', desc: 'Diterima oleh kepala proyek.' }]
+        };
+      }
+      return s;
+    }));
+    setPodPhoto(null);
+    setSignatureSaved(false);
+    triggerToast(`Pengiriman ${shipmentId} sukses diselesaikan! Dana Escrow dicairkan.`);
+  };
+
   return (
-    <div className="dashboard-app">
+    <div className="bbg-dashboard-wrapper">
       
-      {}
+      {/* ==========================================
+          FALLBACK DESKRIPSI GAYA VISUAL (EMBEDDED STYLE ENGINE)
+          Mencegah visual pecah atau polos di Vercel/Codespaces
+          ========================================== */}
       <style>{`
-        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&family=Poppins:wght@600;700&family=Open+Sans:wght@400;600&display=swap');
-
-        :root {
-          --primary-blue: #1E88E5;
-          --primary-blue-hover: #1565C0;
-          --accent-green: #43A047;
-          --accent-green-hover: #2E7D32;
-          --accent-yellow: #FDD835;
-          --neutral-white: #FFFFFF;
-          --dark-gray: #212121;
-          --light-gray: #F5F5F5;
-          --border-color: #E0E0E0;
-          --text-muted: #757575;
-          --card-shadow: 0 4px 8px rgba(0, 0, 0, 0.05);
-        }
-
-        * {
-          box-sizing: border-box;
-          margin: 0;
-          padding: 0;
-        }
-
-        body {
+        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Poppins:wght@600;700;800&display=swap');
+        
+        .bbg-dashboard-wrapper {
           font-family: 'Inter', sans-serif;
-          background-color: var(--light-gray);
-          color: var(--dark-gray);
+          background-color: #f1f5f9;
+          color: #1e293b;
+          min-height: 100vh;
+          display: flex;
           overflow-x: hidden;
         }
 
-        /* Layout Structure */
-        .dashboard-app {
-          display: flex;
-          min-height: 100vh;
-          width: 100vw;
-          background-color: var(--light-gray);
+        h1, h2, h3, h4, h5 {
+          font-family: 'Poppins', sans-serif;
         }
 
-        /* Sidebar Navigation style */
-        .sidebar-left {
+        /* Sidebar Styling */
+        .bbg-sidebar {
           width: 260px;
-          background-color: var(--dark-gray);
-          color: var(--neutral-white);
+          background-color: #0f172a;
+          color: #f8fafc;
           display: flex;
           flex-direction: column;
-          justify-content: space-between;
-          padding: 24px 16px;
-          flex-shrink: 0;
+          padding: 24px;
+          border-right: 1px solid #1e293b;
+          min-height: 100vh;
           position: sticky;
           top: 0;
-          height: 100vh;
-          box-shadow: 4px 0 10px rgba(0, 0, 0, 0.15);
-          z-index: 50;
+          transition: all 0.3s ease;
         }
 
-        .brand-logo-area {
+        .bbg-brand-logo {
+          font-size: 20px;
+          font-weight: 800;
+          color: #ffffff;
           display: flex;
           align-items: center;
-          gap: 12px;
-          margin-bottom: 32px;
-          padding: 0 8px;
+          gap: 10px;
+          margin-bottom: 40px;
         }
 
-        .brand-logo-icon {
-          font-size: 28px;
-          background-color: var(--primary-blue);
-          width: 44px;
-          height: 44px;
-          display: flex;
-          align-items: center;
-          justify-content: center;
-          border-radius: 12px;
+        .bbg-brand-logo span {
+          color: #F2C335;
         }
 
-        .brand-name {
-          font-family: 'Poppins', sans-serif;
-          font-size: 18px;
-          font-weight: 700;
-          letter-spacing: -0.5px;
-          line-height: 1.2;
-        }
-
-        .brand-name span {
-          color: var(--primary-blue);
-        }
-
-        .nav-menu-list {
-          list-style: none;
+        .bbg-menu-list {
           display: flex;
           flex-direction: column;
           gap: 8px;
+          flex-grow: 1;
         }
 
-        .nav-menu-item button {
-          width: 100%;
-          background: none;
-          border: none;
-          color: #B0BEC5;
-          padding: 12px 16px;
-          border-radius: 8px;
-          font-size: 14px;
-          font-weight: 500;
-          text-align: left;
-          cursor: pointer;
+        .bbg-menu-item {
           display: flex;
           align-items: center;
           gap: 12px;
-          transition: all 0.2s ease;
-        }
-
-        .nav-menu-item button:hover {
-          background-color: rgba(255, 255, 255, 0.08);
-          color: var(--neutral-white);
-        }
-
-        .nav-menu-item.active button {
-          background-color: var(--primary-blue);
-          color: var(--neutral-white);
+          padding: 12px 16px;
+          border-radius: 12px;
+          color: #94a3b8;
           font-weight: 600;
+          font-size: 14px;
+          background: none;
+          border: none;
+          text-align: left;
+          cursor: pointer;
+          transition: all 0.2s ease;
+          width: 100%;
         }
 
-        .nav-menu-item.active .nav-icon svg {
-          fill: var(--neutral-white);
+        .bbg-menu-item:hover, .bbg-menu-item.active {
+          color: #ffffff;
+          background-color: #1e293b;
         }
 
-        .nav-icon {
-          width: 20px;
-          height: 20px;
-          display: flex;
-          align-items: center;
-          justify-content: center;
-          flex-shrink: 0;
+        .bbg-menu-item.active {
+          background-color: #00805a;
+          box-shadow: 0 4px 12px rgba(0, 128, 90, 0.3);
         }
 
-        .sidebar-footer-info {
-          font-size: 11px;
-          color: #78909C;
-          border-top: 1px solid rgba(255, 255, 255, 0.1);
-          padding-top: 16px;
-          margin-top: 24px;
-          line-height: 1.4;
-        }
-
-        /* Main Workspace Container */
-        .workspace-main {
-          flex: 1;
+        /* Main Area Layout */
+        .bbg-main-area {
+          flex-grow: 1;
           display: flex;
           flex-direction: column;
-          min-width: 0;
+          min-width: 0; /* Mencegah overflow */
         }
 
-        /* Top Bar Header Area */
-        .header-topbar {
-          background-color: var(--neutral-white);
-          height: 70px;
-          border-bottom: 1px solid var(--border-color);
+        /* Top Bar Header */
+        .bbg-topbar {
+          background-color: #ffffff;
+          border-bottom: 1px solid #e2e8f0;
+          padding: 16px 40px;
           display: flex;
-          align-items: center;
           justify-content: space-between;
-          padding: 0 32px;
+          align-items: center;
           position: sticky;
           top: 0;
           z-index: 40;
         }
 
-        .search-container {
-          position: relative;
-          width: 320px;
-        }
-
-        .search-icon-inside {
-          position: absolute;
-          left: 14px;
-          top: 50%;
-          transform: translateY(-50%);
-          display: flex;
-          align-items: center;
-          pointer-events: none;
-        }
-
-        .search-input-field {
-          width: 100%;
-          background-color: var(--light-gray);
-          border: 1px solid var(--border-color);
-          border-radius: 8px;
-          padding: 10px 14px 10px 42px;
-          font-size: 13px;
-          font-family: 'Inter', sans-serif;
-          color: var(--dark-gray);
-          transition: border-color 0.2s ease, box-shadow 0.2s ease;
-        }
-
-        .search-input-field:focus {
-          outline: none;
-          border-color: var(--primary-blue);
-          box-shadow: 0 0 0 3px rgba(30, 136, 229, 0.15);
-        }
-
-        .profile-user-corner {
-          display: flex;
-          align-items: center;
-          gap: 16px;
-        }
-
-        .notif-bell-btn {
-          background: none;
-          border: none;
-          cursor: pointer;
-          position: relative;
-          width: 38px;
-          height: 38px;
-          display: flex;
-          align-items: center;
-          justify-content: center;
-          border-radius: 50%;
-          transition: background-color 0.2s ease;
-        }
-
-        .notif-bell-btn:hover {
-          background-color: var(--light-gray);
-        }
-
-        .notif-dot-active {
-          position: absolute;
-          top: 8px;
-          right: 8px;
-          width: 8px;
-          height: 8px;
-          background-color: var(--accent-green);
-          border: 1.5px solid var(--neutral-white);
-          border-radius: 50%;
-        }
-
-        .user-meta-header {
-          display: flex;
-          align-items: center;
-          gap: 12px;
-          cursor: pointer;
-        }
-
-        .avatar-placeholder {
-          width: 40px;
-          height: 40px;
-          background-color: #E3F2FD;
-          border: 2px solid var(--primary-blue);
-          border-radius: 50%;
-          display: flex;
-          align-items: center;
-          justify-content: center;
-          font-weight: 600;
-          color: var(--primary-blue);
-          font-size: 14px;
-        }
-
-        .user-info-text {
-          display: flex;
-          flex-direction: column;
-        }
-
-        .user-display-name {
-          font-size: 14px;
-          font-weight: 600;
-          color: var(--dark-gray);
-        }
-
-        .user-display-role {
-          font-size: 11px;
-          color: var(--text-muted);
-          margin-top: 1px;
-        }
-
-        /* Content Area grid */
-        .dashboard-content {
-          padding: 32px;
-          display: flex;
-          flex-direction: column;
-          gap: 32px;
-          max-width: 1400px;
-          width: 100%;
-          margin: 0 auto;
-        }
-
-        .section-headline-area {
-          display: flex;
-          justify-content: space-between;
-          align-items: center;
-        }
-
-        .section-headline {
-          font-family: 'Poppins', sans-serif;
-          font-size: 24px;
+        .bbg-topbar-left h2 {
+          font-size: 18px;
           font-weight: 700;
-          color: var(--dark-gray);
+          color: #0f172a;
+          margin: 0;
         }
 
-        .section-subheadline {
-          font-size: 13px;
-          color: var(--text-muted);
-          margin-top: 4px;
-        }
-
-        /* Colored Statistic Grid */
-        .stats-grid-row {
-          display: grid;
-          grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
-          gap: 16px;
-        }
-
-        .stat-card-widget {
-          background-color: var(--neutral-white);
-          border-radius: 12px;
-          padding: 24px;
-          box-shadow: var(--card-shadow);
+        .bbg-topbar-right {
           display: flex;
           align-items: center;
-          justify-content: space-between;
-          border-left: 5px solid var(--primary-blue);
-          transition: transform 0.2s ease, box-shadow 0.2s ease;
-        }
-
-        .stat-card-widget:hover {
-          transform: translateY(-2px);
-          box-shadow: 0 6px 12px rgba(0, 0, 0, 0.08);
-        }
-
-        .stat-card-widget.green-accent {
-          border-left-color: var(--accent-green);
-        }
-
-        .stat-card-widget.yellow-accent {
-          border-left-color: var(--accent-yellow);
-        }
-
-        .stat-card-widget.blue-accent {
-          border-left-color: var(--primary-blue);
-        }
-
-        .stat-info-left {
-          display: flex;
-          flex-direction: column;
-          gap: 6px;
-        }
-
-        .stat-card-label {
-          font-size: 12px;
-          font-weight: 600;
-          color: var(--text-muted);
-          text-transform: uppercase;
-          letter-spacing: 0.5px;
-        }
-
-        .stat-card-number {
-          font-size: 28px;
-          font-weight: 700;
-          color: var(--dark-gray);
-          line-height: 1;
-        }
-
-        .stat-card-subtext {
-          font-size: 11px;
-          color: var(--text-muted);
-          display: flex;
-          align-items: center;
-          gap: 4px;
-        }
-
-        .stat-card-icon-right {
-          width: 48px;
-          height: 48px;
-          border-radius: 10px;
-          display: flex;
-          align-items: center;
-          justify-content: center;
-          background-color: var(--light-gray);
-          font-size: 22px;
-        }
-
-        /* Main Content Block Grid System */
-        .main-content-layout-blocks {
-          display: grid;
-          grid-template-columns: 2fr 1fr;
-          gap: 24px;
-          align-items: start;
-        }
-
-        @media (max-width: 1024px) {
-          .main-content-layout-blocks {
-            grid-template-columns: 1fr;
-          }
-        }
-
-        /* Custom Card Panel Component */
-        .panel-container-card {
-          background-color: var(--neutral-white);
-          border-radius: 12px;
-          box-shadow: var(--card-shadow);
-          padding: 24px;
-          display: flex;
-          flex-direction: column;
           gap: 20px;
         }
 
-        .panel-header-row {
-          display: flex;
-          justify-content: space-between;
-          align-items: center;
-          border-bottom: 1px solid var(--border-color);
-          padding-bottom: 16px;
+        .bbg-vip-badge-btn {
+          background-color: #F2C335;
+          color: #0f172a;
+          font-weight: 700;
+          font-size: 13px;
+          padding: 8px 16px;
+          border-radius: 10px;
+          border: none;
+          cursor: pointer;
+          transition: all 0.2s ease;
+          box-shadow: 0 4px 10px rgba(242, 195, 53, 0.2);
         }
 
-        .panel-title-with-icon {
+        .bbg-vip-badge-btn:hover {
+          background-color: #e0b224;
+          transform: translateY(-1px);
+        }
+
+        .bbg-profile-section {
           display: flex;
           align-items: center;
           gap: 10px;
-          font-family: 'Poppins', sans-serif;
+          font-size: 14px;
+          font-weight: 600;
+          color: #334155;
+        }
+
+        /* Content Container */
+        .bbg-content {
+          padding: 40px;
+          flex-grow: 1;
+        }
+
+        /* Custom Stat Cards */
+        .bbg-stats-grid {
+          display: grid;
+          grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+          gap: 24px;
+          margin-bottom: 32px;
+        }
+
+        .bbg-stat-card {
+          background-color: #ffffff;
+          border-radius: 20px;
+          padding: 24px;
+          box-shadow: 0 4px 20px rgba(0,0,0,0.03);
+          border: 1px solid #e2e8f0;
+          display: flex;
+          flex-direction: column;
+          gap: 8px;
+        }
+
+        .bbg-stat-title {
+          font-size: 12px;
+          color: #64748b;
+          text-transform: uppercase;
+          font-weight: 700;
+          letter-spacing: 0.05em;
+        }
+
+        .bbg-stat-value {
+          font-size: 24px;
+          font-weight: 800;
+          color: #0f172a;
+        }
+
+        .bbg-stat-badge {
+          font-size: 11px;
+          font-weight: 600;
+          padding: 4px 8px;
+          border-radius: 6px;
+          align-self: flex-start;
+        }
+
+        .bbg-stat-badge.success {
+          background-color: #dcfce7;
+          color: #15803d;
+        }
+
+        .bbg-stat-badge.info {
+          background-color: #e0f2fe;
+          color: #0369a1;
+        }
+
+        /* Promosi Carousel Banner */
+        .bbg-promo-banner {
+          border-radius: 24px;
+          padding: 40px;
+          color: #ffffff;
+          position: relative;
+          overflow: hidden;
+          margin-bottom: 32px;
+          box-shadow: 0 10px 30px rgba(0, 128, 90, 0.15);
+          transition: all 0.5s ease;
+        }
+
+        .bbg-promo-badge {
+          background-color: #F2C335;
+          color: #0f172a;
+          font-size: 10px;
+          font-weight: 800;
+          padding: 4px 10px;
+          border-radius: 20px;
+          display: inline-block;
+          margin-bottom: 16px;
+          letter-spacing: 0.05em;
+        }
+
+        .bbg-promo-title {
+          font-size: 32px;
+          font-weight: 800;
+          line-height: 1.2;
+          margin-bottom: 12px;
+          max-width: 650px;
+        }
+
+        .bbg-promo-desc {
+          font-size: 14px;
+          color: #e2e8f0;
+          max-width: 600px;
+          margin-bottom: 24px;
+          line-height: 1.6;
+        }
+
+        /* Dynamic dots for banner */
+        .bbg-promo-dots {
+          display: flex;
+          gap: 6px;
+          margin-top: 16px;
+        }
+
+        .bbg-promo-dot {
+          width: 8px;
+          height: 8px;
+          border-radius: 50%;
+          background-color: rgba(255, 255, 255, 0.4);
+          border: none;
+          cursor: pointer;
+        }
+
+        .bbg-promo-dot.active {
+          background-color: #F2C335;
+          width: 24px;
+          border-radius: 10px;
+        }
+
+        /* Interactive Grid Panels */
+        .bbg-interactive-card {
+          background-color: #ffffff;
+          border-radius: 24px;
+          padding: 32px;
+          box-shadow: 0 4px 20px rgba(0, 0, 0, 0.03);
+          border: 1px solid #e2e8f0;
+          margin-bottom: 32px;
+        }
+
+        .bbg-card-title {
           font-size: 16px;
           font-weight: 700;
-          color: var(--dark-gray);
-        }
-
-        .table-data-scrolled {
-          overflow-x: auto;
-          width: 100%;
-        }
-
-        /* Tables modern layout */
-        .modern-data-table {
-          width: 100%;
-          border-collapse: collapse;
-          text-align: left;
-          font-size: 13px;
-        }
-
-        .modern-data-table th {
-          background-color: var(--light-gray);
-          color: var(--dark-gray);
-          font-weight: 600;
-          padding: 12px 16px;
-          border-bottom: 1px solid var(--border-color);
-        }
-
-        .modern-data-table td {
-          padding: 14px 16px;
-          border-bottom: 1px solid var(--border-color);
-          color: var(--dark-gray);
-          font-family: 'Inter', sans-serif;
-        }
-
-        .modern-data-table tr:last-child td {
-          border-bottom: none;
-        }
-
-        .modern-data-table tr:hover td {
-          background-color: rgba(30, 136, 229, 0.02);
-        }
-
-        /* Status badge styles */
-        .badge-status-container {
-          display: inline-flex;
+          color: #0f172a;
+          margin-bottom: 24px;
+          display: flex;
           align-items: center;
-          padding: 4px 10px;
+          gap: 10px;
+        }
+
+        /* Form Inputs & Selects */
+        .bbg-form-control {
+          background-color: #f8fafc;
+          border: 1px solid #e2e8f0;
           border-radius: 12px;
-          font-size: 11px;
-          font-weight: 600;
-          text-transform: capitalize;
-        }
-
-        .badge-status-container.active {
-          background-color: #E8F5E9;
-          color: var(--accent-green);
-        }
-
-        .badge-status-container.pending {
-          background-color: #FFFDE7;
-          color: #F57F17;
-        }
-
-        .badge-status-container.suspended {
-          background-color: #FFEBEE;
-          color: #C62828;
-        }
-
-        .badge-status-container.approved {
-          background-color: #E8F5E9;
-          color: var(--accent-green);
-        }
-
-        .badge-status-container.rejected {
-          background-color: #FFEBEE;
-          color: #C62828;
-        }
-
-        /* Button styles requested precisely */
-        .btn-style-primary {
-          background-color: var(--primary-blue);
-          color: var(--neutral-white);
-          border: none;
-          padding: 10px 18px;
+          padding: 12px 16px;
           font-size: 13px;
-          font-weight: 600;
-          border-radius: 8px;
-          cursor: pointer;
-          display: inline-flex;
-          align-items: center;
-          gap: 8px;
-          box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+          font-weight: 500;
+          color: #1e293b;
+          width: 100%;
+          outline: none;
+          box-sizing: border-box;
           transition: all 0.2s ease;
         }
 
-        .btn-style-primary:hover {
-          background-color: var(--primary-blue-hover);
-          transform: translateY(-1px);
+        .bbg-form-control:focus {
+          border-color: #00805a;
+          background-color: #ffffff;
         }
 
-        .btn-style-secondary {
-          border: 1px solid var(--primary-blue);
-          color: var(--primary-blue);
-          background-color: var(--neutral-white);
-          padding: 9px 16px;
+        .bbg-btn-primary {
+          background-color: #00805a;
+          color: #ffffff;
+          font-weight: 700;
           font-size: 13px;
-          font-weight: 600;
-          border-radius: 8px;
+          padding: 14px 24px;
+          border-radius: 12px;
+          border: none;
           cursor: pointer;
-          display: inline-flex;
-          align-items: center;
-          gap: 8px;
           transition: all 0.2s ease;
+          box-shadow: 0 4px 12px rgba(0, 128, 90, 0.15);
         }
 
-        .btn-style-secondary:hover {
-          background-color: #E3F2FD;
+        .bbg-btn-primary:hover {
+          background-color: #006647;
           transform: translateY(-1px);
         }
 
-        .btn-style-danger {
-          background-color: #FFEBEE;
-          color: #C62828;
-          border: none;
-          padding: 6px 12px;
-          font-size: 11px;
-          font-weight: 600;
-          border-radius: 6px;
-          cursor: pointer;
-          transition: all 0.15s ease;
+        /* Toast Alert Floating Box */
+        .bbg-toast {
+          position: fixed;
+          top: 32px;
+          left: 50%;
+          transform: translateX(-50%);
+          background-color: #0f172a;
+          color: #ffffff;
+          font-size: 12px;
+          font-weight: 700;
+          padding: 12px 24px;
+          border-radius: 40px;
+          box-shadow: 0 10px 25px rgba(0,0,0,0.15);
+          display: flex;
+          align-items: center;
+          gap: 10px;
+          z-index: 100;
+          border: 1px solid #1e293b;
         }
 
-        .btn-style-danger:hover {
-          background-color: #FFCDD2;
+        .bbg-toast-dot {
+          width: 8px;
+          height: 8px;
+          background-color: #F2C335;
+          border-radius: 50%;
+          display: inline-block;
+          animation: bbg-ping 1s infinite alternate;
         }
 
-        .btn-style-success-mini {
-          background-color: #E8F5E9;
-          color: var(--accent-green);
-          border: none;
-          padding: 6px 12px;
-          font-size: 11px;
-          font-weight: 600;
-          border-radius: 6px;
-          cursor: pointer;
-          transition: all 0.15s ease;
-          margin-right: 6px;
+        @keyframes bbg-ping {
+          0% { transform: scale(1); opacity: 0.5; }
+          100% { transform: scale(1.5); opacity: 1; }
         }
 
-        .btn-style-success-mini:hover {
-          background-color: #C8E6C9;
-        }
-
-        /* Blog Section Component Card */
-        .blogs-grid-container {
-          display: grid;
-          grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+        /* Tracking Timeline styling */
+        .bbg-timeline-container {
+          background-color: #f8fafc;
+          border-radius: 16px;
+          padding: 24px;
+          border: 1px solid #e2e8f0;
+          display: flex;
+          flex-direction: column;
           gap: 16px;
         }
 
-        .blog-item-card {
-          background-color: var(--neutral-white);
-          border: 1px solid var(--border-color);
-          border-radius: 12px;
-          overflow: hidden;
-          display: flex;
-          flex-direction: column;
-          justify-content: space-between;
-          transition: transform 0.2s ease, box-shadow 0.2s ease;
-        }
-
-        .blog-item-card:hover {
-          transform: translateY(-2px);
-          box-shadow: var(--card-shadow);
-        }
-
-        .blog-card-body {
-          padding: 16px;
-          display: flex;
-          flex-direction: column;
-          gap: 8px;
-        }
-
-        .blog-meta-row {
-          display: flex;
-          justify-content: space-between;
-          font-size: 11px;
-          color: var(--text-muted);
-        }
-
-        .blog-tag-badge {
-          background-color: #E3F2FD;
-          color: var(--primary-blue);
-          padding: 2px 8px;
-          border-radius: 4px;
-          font-weight: 600;
-        }
-
-        .blog-item-title {
-          font-family: 'Poppins', sans-serif;
-          font-size: 14px;
-          font-weight: 700;
-          color: var(--dark-gray);
-          line-height: 1.4;
-          cursor: pointer;
-        }
-
-        .blog-item-title:hover {
-          color: var(--primary-blue);
-        }
-
-        .blog-card-footer {
-          border-top: 1px solid var(--border-color);
-          padding: 12px 16px;
-          display: flex;
-          justify-content: space-between;
-          align-items: center;
-          font-size: 12px;
-          background-color: var(--light-gray);
-        }
-
-        /* SVG Data Chart */
-        .chart-visual-box {
-          height: 180px;
-          display: flex;
-          align-items: flex-end;
-          justify-content: space-between;
-          padding: 10px 0;
+        .bbg-timeline-progress-bar {
+          height: 6px;
+          background-color: #e2e8f0;
+          border-radius: 10px;
           position: relative;
+          margin: 20px 0;
+          overflow: hidden;
         }
 
-        .chart-svg-container {
-          width: 100%;
+        .bbg-timeline-progress-fill {
           height: 100%;
+          background-color: #00805a;
+          transition: width 0.5s ease-in-out;
         }
 
-        /* Quick Action Section styled specifically */
-        .quick-action-strip {
-          background-color: var(--neutral-white);
-          border-radius: 12px;
-          box-shadow: var(--card-shadow);
-          padding: 20px;
+        /* Floating Sidebar Actions */
+        .bbg-floating-widget {
+          position: fixed;
+          right: 24px;
+          bottom: 24px;
           display: flex;
           flex-direction: column;
-          gap: 12px;
+          gap: 10px;
+          z-index: 50;
         }
 
-        .quick-action-strip-title {
-          font-family: 'Poppins', sans-serif;
-          font-size: 13px;
-          font-weight: 700;
-          color: var(--dark-gray);
-          text-transform: uppercase;
-          letter-spacing: 0.5px;
-        }
-
-        .quick-buttons-row {
-          display: flex;
-          flex-wrap: wrap;
-          gap: 12px;
-        }
-
-        /* System notification system */
-        .system-toast-container {
-          position: fixed;
-          bottom: 30px;
-          right: 30px;
-          background-color: var(--dark-gray);
-          color: var(--neutral-white);
-          padding: 16px 24px;
-          border-radius: 8px;
-          box-shadow: 0 10px 20px rgba(0, 0, 0, 0.2);
-          font-size: 13px;
-          font-weight: 500;
+        .bbg-floating-btn {
+          width: 48px;
+          height: 48px;
+          border-radius: 50%;
+          background-color: #ffffff;
+          color: #0f172a;
+          border: 1px solid #e2e8f0;
           display: flex;
           align-items: center;
-          gap: 12px;
-          z-index: 1000;
-          animation: slideUpIn 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275);
-          border-left: 4px solid var(--primary-blue);
+          justify-content: center;
+          font-size: 18px;
+          cursor: pointer;
+          box-shadow: 0 4px 15px rgba(0,0,0,0.08);
+          transition: all 0.3s ease;
         }
 
-        .system-toast-container.success {
-          border-left-color: var(--accent-green);
+        .bbg-floating-btn:hover {
+          background-color: #00805a;
+          color: #ffffff;
+          transform: translateY(-2px);
         }
 
-        .system-toast-container.warning {
-          border-left-color: var(--accent-yellow);
-        }
-
-        .system-toast-container.error {
-          border-left-color: #C62828;
-        }
-
-        /* Form Modal structures */
-        .modal-overlay-bg {
+        /* Modal Layout */
+        .bbg-modal-overlay {
           position: fixed;
           inset: 0;
-          background-color: rgba(33, 33, 33, 0.5);
+          background-color: rgba(15, 23, 42, 0.6);
           backdrop-filter: blur(4px);
           display: flex;
           align-items: center;
           justify-content: center;
-          z-index: 500;
+          z-index: 60;
+          padding: 16px;
         }
 
-        .modal-body-container {
-          background-color: var(--neutral-white);
-          border-radius: 12px;
+        .bbg-modal-card {
+          background-color: #ffffff;
+          border-radius: 24px;
           width: 100%;
           max-width: 480px;
+          padding: 32px;
           box-shadow: 0 20px 40px rgba(0,0,0,0.15);
-          padding: 24px;
-          display: flex;
-          flex-direction: column;
-          gap: 20px;
-          animation: scaleInModal 0.2s ease-out;
+          position: relative;
         }
 
-        .modal-header-row {
-          display: flex;
-          justify-content: space-between;
-          align-items: center;
-          border-bottom: 1px solid var(--border-color);
-          padding-bottom: 12px;
-        }
-
-        .modal-title {
-          font-family: 'Poppins', sans-serif;
-          font-size: 18px;
-          font-weight: 700;
-          color: var(--dark-gray);
-        }
-
-        .close-modal-btn {
-          background: none;
-          border: none;
-          font-size: 20px;
-          color: var(--text-muted);
-          cursor: pointer;
-        }
-
-        .form-group-field {
-          display: flex;
-          flex-direction: column;
-          gap: 6px;
-          margin-bottom: 16px;
-        }
-
-        .form-label-style {
-          font-size: 11px;
-          font-weight: 600;
-          color: var(--text-muted);
-          text-transform: uppercase;
-        }
-
-        .form-input-control {
-          background-color: var(--light-gray);
-          border: 1px solid var(--border-color);
-          border-radius: 8px;
-          padding: 10px 12px;
-          font-size: 13px;
-          color: var(--dark-gray);
-          font-family: 'Inter', sans-serif;
-          width: 100%;
-        }
-
-        .form-input-control:focus {
-          outline: none;
-          border-color: var(--primary-blue);
-        }
-
-        /* Footer Copyright design */
-        .footer-copyright-strip {
-          border-top: 1px solid var(--border-color);
-          padding-top: 20px;
-          margin-top: 40px;
-          display: flex;
-          justify-content: space-between;
-          align-items: center;
-          font-size: 12px;
-          color: var(--text-muted);
-        }
-
-        .footer-links-list {
-          display: flex;
-          gap: 16px;
-          list-style: none;
-        }
-
-        .footer-links-list a {
-          color: var(--text-muted);
-          text-decoration: none;
-          transition: color 0.2s ease;
-        }
-
-        .footer-links-list a:hover {
-          color: var(--primary-blue);
-        }
-
-        /* Filter Row bar */
-        .filter-panel-row {
-          display: flex;
-          gap: 12px;
-          align-items: center;
-          flex-wrap: wrap;
-        }
-
-        .pill-tab-filter {
-          background-color: var(--light-gray);
-          border: 1px solid var(--border-color);
-          padding: 6px 14px;
-          font-size: 12px;
-          border-radius: 20px;
-          cursor: pointer;
-          font-weight: 500;
-          transition: all 0.2s ease;
-          color: var(--text-muted);
-        }
-
-        .pill-tab-filter.active {
-          background-color: var(--primary-blue);
-          border-color: var(--primary-blue);
-          color: var(--neutral-white);
-          font-weight: 600;
-        }
-
-        /* Tooltip details design */
-        .chart-tooltip-bubble {
-          position: absolute;
-          background-color: var(--dark-gray);
-          color: var(--neutral-white);
-          padding: 6px 12px;
-          border-radius: 6px;
-          font-size: 11px;
-          pointer-events: none;
-          box-shadow: 0 4px 6px rgba(0,0,0,0.1);
-          transform: translate(-50%, -100%);
-        }
-
-        /* Animations */
-        @keyframes slideUpIn {
-          from {
-            transform: translateY(20px);
-            opacity: 0;
+        /* Responsive Breakpoints */
+        @media (max-width: 968px) {
+          .bbg-dashboard-wrapper {
+            flex-direction: column;
           }
-          to {
-            transform: translateY(0);
-            opacity: 1;
+          .bbg-sidebar {
+            width: 100%;
+            min-height: auto;
+            padding: 16px;
+            position: relative;
           }
-        }
-
-        @keyframes scaleInModal {
-          from {
-            transform: scale(0.95);
-            opacity: 0;
+          .bbg-brand-logo {
+            margin-bottom: 20px;
           }
-          to {
-            transform: scale(1);
-            opacity: 1;
+          .bbg-menu-list {
+            flex-direction: row;
+            overflow-x: auto;
+            padding-bottom: 8px;
+          }
+          .bbg-menu-item {
+            white-space: nowrap;
+            width: auto;
+            padding: 8px 16px;
+          }
+          .bbg-topbar {
+            padding: 16px 20px;
+          }
+          .bbg-content {
+            padding: 20px;
           }
         }
       `}</style>
 
-      {/* TOAST SYSTEM ALERTS */}
-      {toast && (
-        <div className={`system-toast-container ${toast.type}`}>
-          <span>
-            {toast.type === 'success' ? '✅' : toast.type === 'warning' ? '⚠️' : '🚨'}
-          </span>
-          <span>{toast.text}</span>
+      {/* FLOATING TOAST NOTIFICATIONS */}
+      {toastMessage && (
+        <div className="bbg-toast">
+          <span className="bbg-toast-dot"></span>
+          <span>{toastMessage}</span>
         </div>
       )}
 
-      {/* =======================================================
-          SIDEBAR NAVIGATION (LEFT SECTION)
-          ======================================================= */}
-      <aside className="sidebar-left">
-        <div>
-          {/* Logo Brand Title */}
-          <div className="brand-logo-area">
-            <div className="brand-logo-icon">
-              <span style={{ fontSize: '20px' }}>📊</span>
-            </div>
-            <div>
-              <h1 className="brand-name">
-                BahanBangun<span>Go</span>
-              </h1>
-              <span style={{ fontSize: '9px', color: '#90A4AE', fontWeight: 'bold', trackingSpacing: '1px' }}>
-                ENTERPRISE CONSOLE
-              </span>
-            </div>
-          </div>
-
-          {/* Sidebar Menu Items */}
-          <nav>
-            <ul className="nav-menu-list">
-              <li className={`nav-menu-item ${activeTab === 'members' ? 'active' : ''}`}>
-                <button onClick={() => { setActiveTab('members'); setSearchQuery(''); }}>
-                  <span className="nav-icon">👤</span>
-                  <span>Anggota (Members)</span>
-                </button>
-              </li>
-              <li className={`nav-menu-item ${activeTab === 'blog' ? 'active' : ''}`}>
-                <button onClick={() => { setActiveTab('blog'); setSearchQuery(''); }}>
-                  <span className="nav-icon">📝</span>
-                  <span>Posting Blog (Blogs)</span>
-                </button>
-              </li>
-              <li className={`nav-menu-item ${activeTab === 'redeem' ? 'active' : ''}`}>
-                <button onClick={() => { setActiveTab('redeem'); setSearchQuery(''); }}>
-                  <span className="nav-icon">🎁</span>
-                  <span>Penukaran (Redeem)</span>
-                  {totalPendingRedeems > 0 && (
-                    <span style={{
-                      backgroundColor: 'var(--accent-yellow)',
-                      color: 'var(--dark-gray)',
-                      fontSize: '10px',
-                      fontWeight: 'bold',
-                      padding: '2px 6px',
-                      borderRadius: '10px',
-                      marginLeft: 'auto'
-                    }}>
-                      {totalPendingRedeems}
-                    </span>
-                  )}
-                </button>
-              </li>
-              <li className={`nav-menu-item ${activeTab === 'settings' ? 'active' : ''}`}>
-                <button onClick={() => { setActiveTab('settings'); setSearchQuery(''); }}>
-                  <span className="nav-icon">⚙️</span>
-                  <span>Pengaturan (Settings)</span>
-                </button>
-              </li>
-            </ul>
-          </nav>
+      {/* ==========================================
+          SIDEBAR NAVIGATION (LEFT SIDEBAR)
+          ========================================== */}
+      <aside className="bbg-sidebar">
+        <div className="bbg-brand-logo">
+          <span>🏗️</span> BahanBangun<span>Go</span>
         </div>
-
-        {/* Sidebar Footer details */}
-        <div className="sidebar-footer-info">
-          <p>Logged as: <b>admin_pro</b></p>
-          <p style={{ marginTop: '4px', fontSize: '10px' }}>Build v2.4.1 (Stable)</p>
+        <div className="bbg-menu-list">
+          <button 
+            onClick={() => { setActiveTab('dashboard'); triggerToast('Membuka Dasbor Analitik'); }} 
+            className={`bbg-menu-item ${activeTab === 'dashboard' ? 'active' : ''}`}
+          >
+            📊 Dasbor Analitik
+          </button>
+          <button 
+            onClick={() => { setActiveTab('tracking'); triggerToast('Membuka Pelacakan Resi'); }} 
+            className={`bbg-menu-item ${activeTab === 'tracking' ? 'active' : ''}`}
+          >
+            🔍 Lacak Resi AWB
+          </button>
+          <button 
+            onClick={() => { setActiveTab('price'); triggerToast('Membuka Kalkulator Ongkir'); }} 
+            className={`bbg-menu-item ${activeTab === 'price' ? 'active' : ''}`}
+          >
+            ⚖️ Cek Tarif & ODOL
+          </button>
+          <button 
+            onClick={() => { setActiveTab('outlet'); triggerToast('Membuka Pencarian Hub'); }} 
+            className={`bbg-menu-item ${activeTab === 'outlet' ? 'active' : ''}`}
+          >
+            🏪 Cari Cabang Hub
+          </button>
+          <button 
+            onClick={() => { setActiveTab('simulator'); triggerToast('Membuka Simulator Peran'); }} 
+            className={`bbg-menu-item ${activeTab === 'simulator' ? 'active' : ''}`}
+          >
+            🎛️ Simulator Sandboks
+          </button>
+        </div>
+        <div style={{ marginTop: 'auto', borderTop: '1px solid #1e293b', paddingTop: '20px' }}>
+          <p style={{ fontSize: '10px', color: '#64748b', fontWeight: '700', textTransform: 'uppercase', letterSpacing: '0.05em' }}>
+            System Standard v4.0
+          </p>
         </div>
       </aside>
 
-      {/* =======================================================
-          MAIN WORKSPACE WRAPPER
-          ======================================================= */}
-      <main className="workspace-main">
+      {/* ==========================================
+          MAIN AREA CONTENT (TOPBAR + GRID BODY)
+          ========================================== */}
+      <main className="bbg-main-area">
         
-        {}
-        {/* HEADER TOP-BAR */}
-        <header className="header-topbar">
-          <div className="search-container">
-            <span className="search-icon-inside">🔍</span>
-            <input 
-              type="text" 
-              placeholder="Cari data anggota, artikel, atau resi..."
-              value={searchQuery}
-              onChange={(e) => setSearchQuery(e.target.value)}
-              className="search-input-field"
-            />
+        {/* TOP BAR HEADER */}
+        <header className="bbg-topbar">
+          <div className="bbg-topbar-left">
+            <h2>Portal Logistik Bahan Bangunan & Kargo Curah</h2>
           </div>
-
-          <div className="profile-user-corner">
-            {/* Bell Button */}
-            <button className="notif-bell-btn" onClick={() => triggerToast('Tidak ada notifikasi sistem baru.', 'success')}>
-              <span>🔔</span>
-              {totalPendingRedeems > 0 && <span className="notif-dot-active"></span>}
+          <div className="bbg-topbar-right">
+            <button onClick={() => setShowVipModal(true)} className="bbg-vip-badge-btn">
+              👑 Daftar VIP Proyek
             </button>
-
-            {/* Separator */}
-            <span style={{ width: '1px', height: '24px', backgroundColor: 'var(--border-color)' }}></span>
-
-            {/* User Profile Info */}
-            <div className="user-meta-header" onClick={() => setActiveTab('settings')}>
-              <div className="avatar-placeholder">AD</div>
-              <div className="user-info-text">
-                <span className="user-display-name">D. Stwaret</span>
-                <span className="user-display-role">Super Administrator</span>
-              </div>
+            <span style={{ width: '1px', height: '24px', backgroundColor: '#cbd5e1' }}></span>
+            <div className="bbg-profile-section">
+              <span>👤</span>
+              <span className="hidden md:inline">Kontraktor_Hub</span>
             </div>
           </div>
         </header>
 
-        {/* =======================================================
-            CONTENT SPACE CONTAINER
-            ======================================================= */}
-        <div className="dashboard-content">
+        {/* CONTAINER CONTENT */}
+        <div className="bbg-content">
           
-          {/* Headline Title */}
-          <div className="section-headline-area">
-            <div>
-              <h2 className="section-headline">
-                {activeTab === 'members' && 'Manajemen Anggota Konstruksi'}
-                {activeTab === 'blog' && 'Pusat Konten & Artikel Proyek'}
-                {activeTab === 'redeem' && 'Persetujuan Poin & Redeem Hadiah'}
-                {activeTab === 'settings' && 'Konfigurasi Sistem Utama'}
-              </h2>
-              <p className="section-subheadline">
-                {activeTab === 'members' && 'Kelola hak akses mitra kontraktor, arsitek, dan supplier logistik.'}
-                {activeTab === 'blog' && 'Terbitkan panduan teknik sipil, regulasi logistik, dan info material terbaru.'}
-                {activeTab === 'redeem' && 'Verifikasi permohonan klaim saldo e-wallet dan peralatan keselamatan.'}
-                {activeTab === 'settings' && 'Atur batasan kargo, notifikasi escrow, dan integrasi API pihak ketiga.'}
-              </p>
+          {/* STATS COUNTERS GRID */}
+          <section className="bbg-stats-grid">
+            <div className="bbg-stat-card">
+              <span className="bbg-stat-title">Total Muatan Aktif</span>
+              <span className="bbg-stat-value">3 Pengiriman</span>
+              <span className="bbg-stat-badge success">🟢 3 Armada di Jalan</span>
             </div>
-
-            {/* Action Header Button */}
-            <div>
-              {activeTab === 'members' && (
-                <button className="btn-style-primary" onClick={() => setShowMemberModal(true)}>
-                  <span>➕</span> Tambah Anggota Baru
-                </button>
-              )}
-              {activeTab === 'blog' && (
-                <button className="btn-style-primary" onClick={() => setShowBlogModal(true)}>
-                  <span>✍️</span> Tulis Artikel Baru
-                </button>
-              )}
+            <div className="bbg-stat-card">
+              <span className="bbg-stat-title">Tonase Logistik</span>
+              <span className="bbg-stat-value">3.700 Kg</span>
+              <span className="bbg-stat-badge success">⚖️ Bebas ODOL</span>
             </div>
-          </div>
-
-          {}
-          {/* STATISTIC CARDS (GRID 3-4 COLUMNS) */}
-          <section className="stats-grid-row">
-            
-            {/* Stat Card 1 */}
-            <div className="stat-card-widget blue-accent">
-              <div className="stat-info-left">
-                <span className="stat-card-label">Anggota Aktif</span>
-                <span className="stat-card-number">{totalActiveMembers}</span>
-                <span className="stat-card-subtext">
-                  <span style={{ color: 'var(--accent-green)', fontWeight: 'bold' }}>🟢 {members.length} Terdaftar</span>
-                </span>
-              </div>
-              <div className="stat-card-icon-right">👥</div>
+            <div className="bbg-stat-card">
+              <span className="bbg-stat-title">Cabang Hub Depot</span>
+              <span className="bbg-stat-value">5 Wilayah</span>
+              <span className="bbg-stat-badge info">📍 Jawa & Banten</span>
             </div>
-
-            {/* Stat Card 2 */}
-            <div className="stat-card-widget green-accent">
-              <div className="stat-info-left">
-                <span className="stat-card-label">Artikel Terbit</span>
-                <span className="stat-card-number">{totalPublishedBlogs}</span>
-                <span className="stat-card-subtext">
-                  <span>📖 {blogs.length} Draft & Published</span>
-                </span>
-              </div>
-              <div className="stat-card-icon-right">📝</div>
+            <div className="bbg-stat-card">
+              <span className="bbg-stat-title">Dana Escrow Terjamin</span>
+              <span className="bbg-stat-value">Rp 12.5M</span>
+              <span className="bbg-stat-badge info">🔒 Aman 100%</span>
             </div>
-
-            {/* Stat Card 3 */}
-            <div className="stat-card-widget yellow-accent">
-              <div className="stat-info-left">
-                <span className="stat-card-label">Redeem Pending</span>
-                <span className="stat-card-number">{totalPendingRedeems}</span>
-                <span className="stat-card-subtext">
-                  <span style={{ color: '#E65100', fontWeight: 'bold' }}>⚠️ Butuh Verifikasi Segera</span>
-                </span>
-              </div>
-              <div className="stat-card-icon-right">🎁</div>
-            </div>
-
-            {/* Stat Card 4 */}
-            <div className="stat-card-widget blue-accent">
-              <div className="stat-info-left">
-                <span className="stat-card-label">Poin Terklaim</span>
-                <span className="stat-card-number">{totalPointsRedeemed} Pts</span>
-                <span className="stat-card-subtext">
-                  <span>💎 Dari transaksi selesai</span>
-                </span>
-              </div>
-              <div className="stat-card-icon-right">📊</div>
-            </div>
-
           </section>
 
-          {/* =======================================================
-              MAIN TAB CONTENT (MEMBERS / BLOGS / REDEEM / SETTINGS)
-              ======================================================= */}
-          <div className="main-content-layout-blocks">
-            
-            {/* COLUMN 1: INTERACTIVE WORK PANEL (2/3 width) */}
-            <div className="panel-container-card">
+          {/* ==========================================
+              TAB CONTROLLER VIEW
+              ========================================== */}
+
+          {/* TAB 1: DASHBOARD (HOME SLIDER & CATEGORIES) */}
+          {activeTab === 'dashboard' && (
+            <div style={{ animation: 'fadeIn 0.4s ease' }}>
               
-              {/* TAB CONTENT: MEMBERS */}
-              {activeTab === 'members' && (
-                <>
-                  <div className="panel-header-row">
-                    <h3 className="panel-title-with-icon">
-                      <span>👥</span> Daftar Seluruh Anggota Terdaftar
-                    </h3>
-                    
-                    {/* Status filtering pills */}
-                    <div className="filter-panel-row">
-                      {['all', 'active', 'pending', 'suspended'].map(status => (
-                        <button
-                          key={status}
-                          onClick={() => setFilterStatus(status)}
-                          className={`pill-tab-filter ${filterStatus === status ? 'active' : ''}`}
-                        >
-                          {status}
-                        </button>
-                      ))}
-                    </div>
-                  </div>
-
-                  {/* Data Table */}
-                  <div className="table-data-scrolled">
-                    <table className="modern-data-table">
-                      <thead>
-                        <tr>
-                          <th>ID Anggota</th>
-                          <th>Nama Lengkap</th>
-                          <th>E-Mail</th>
-                          <th>Role Pengguna</th>
-                          <th>Status Akun</th>
-                          <th style={{ textAlign: 'right' }}>Aksi</th>
-                        </tr>
-                      </thead>
-                      <tbody>
-                        {filteredMembers.length === 0 ? (
-                          <tr>
-                            <td colSpan="6" style={{ textAlign: 'center', padding: '30px', color: 'var(--text-muted)' }}>
-                              Tidak ada data anggota yang cocok dengan filter pencarian.
-                            </td>
-                          </tr>
-                        ) : (
-                          filteredMembers.map(member => (
-                            <tr key={member.id}>
-                              <td style={{ fontWeight: 'bold' }}>{member.id}</td>
-                              <td style={{ fontWeight: '500' }}>{member.name}</td>
-                              <td>{member.email}</td>
-                              <td style={{ color: 'var(--text-muted)' }}>{member.role}</td>
-                              <td>
-                                <span className={`badge-status-container ${member.status.toLowerCase()}`}>
-                                  {member.status}
-                                </span>
-                              </td>
-                              <td style={{ textAlign: 'right' }}>
-                                <button 
-                                  onClick={() => {
-                                    setMembers(prev => prev.map(m => m.id === member.id ? { ...m, status: m.status === 'Active' ? 'Suspended' : 'Active' } : m));
-                                    triggerToast(`Status akun ${member.name} berhasil diubah.`);
-                                  }}
-                                  className="btn-style-success-mini"
-                                >
-                                  Toggle Status
-                                </button>
-                                <button 
-                                  onClick={() => handleDeleteMember(member.id)}
-                                  className="btn-style-danger"
-                                >
-                                  Hapus
-                                </button>
-                              </td>
-                            </tr>
-                          ))
-                        )}
-                      </tbody>
-                    </table>
-                  </div>
-                </>
-              )}
-
-              {/* TAB CONTENT: BLOG POSTS */}
-              {activeTab === 'blog' && (
-                <>
-                  <div className="panel-header-row">
-                    <h3 className="panel-title-with-icon">
-                      <span>📝</span> Artikel Panduan & Promosi Konstruksi
-                    </h3>
-                  </div>
-
-                  <div className="blogs-grid-container">
-                    {filteredBlogs.length === 0 ? (
-                      <p style={{ gridColumn: '1/-1', textAlign: 'center', color: 'var(--text-muted)', padding: '24px' }}>
-                        Tidak ada tulisan artikel yang ditemukan.
-                      </p>
-                    ) : (
-                      filteredBlogs.map(blog => (
-                        <div key={blog.id} className="blog-item-card">
-                          <div className="blog-card-body">
-                            <div className="blog-meta-row">
-                              <span className="blog-tag-badge">{blog.category}</span>
-                              <span>{blog.date}</span>
-                            </div>
-                            <h4 className="blog-item-title" onClick={() => triggerToast(`Membuka artikel: ${blog.title}`)}>
-                              {blog.title}
-                            </h4>
-                            <p style={{ fontSize: '12px', color: 'var(--text-muted)', marginTop: '8px' }}>
-                              Ditulis oleh: <b>{blog.author}</b>
-                            </p>
-                          </div>
-                          <div className="blog-card-footer">
-                            <span>👀 {blog.views} Kali dibaca</span>
-                            <span style={{ 
-                              color: blog.status === 'Published' ? 'var(--accent-green)' : '#F57F17',
-                              fontWeight: 'bold'
-                            }}>
-                              ● {blog.status}
-                            </span>
-                          </div>
-                        </div>
-                      ))
-                    )}
-                  </div>
-                </>
-              )}
-
-              {/* TAB CONTENT: REDEEM REQUESTS */}
-              {activeTab === 'redeem' && (
-                <>
-                  <div className="panel-header-row">
-                    <h3 className="panel-title-with-icon">
-                      <span>🎁</span> Riwayat Pengajuan Klaim Reward Poin Mitra
-                    </h3>
-                  </div>
-
-                  <div className="table-data-scrolled">
-                    <table className="modern-data-table">
-                      <thead>
-                        <tr>
-                          <th>ID Request</th>
-                          <th>Nama Member</th>
-                          <th>Barang Hadiah</th>
-                          <th>Poin Dibutuhkan</th>
-                          <th>Status Pengajuan</th>
-                          <th>Tanggal</th>
-                          <th style={{ textAlign: 'right' }}>Verifikasi Admin</th>
-                        </tr>
-                      </thead>
-                      <tbody>
-                        {redeems.map(red => (
-                          <tr key={red.id}>
-                            <td style={{ fontWeight: 'bold' }}>{red.id}</td>
-                            <td>{red.member}</td>
-                            <td style={{ fontWeight: '500' }}>{red.item}</td>
-                            <td style={{ fontWeight: 'bold', color: 'var(--primary-blue)' }}>{red.points} Pts</td>
-                            <td>
-                              <span className={`badge-status-container ${red.status.toLowerCase()}`}>
-                                {red.status}
-                              </span>
-                            </td>
-                            <td>{red.date}</td>
-                            <td style={{ textAlign: 'right' }}>
-                              {red.status === 'Pending' ? (
-                                <>
-                                  <button 
-                                    onClick={() => handleApproveRedeem(red.id)}
-                                    className="btn-style-success-mini"
-                                  >
-                                    Setujui
-                                  </button>
-                                  <button 
-                                    onClick={() => handleRejectRedeem(red.id)}
-                                    className="btn-style-danger"
-                                  >
-                                    Tolak
-                                  </button>
-                                </>
-                              ) : (
-                                <span style={{ fontSize: '11px', color: 'var(--text-muted)', italic: 'true' }}>
-                                  Selesai diproses
-                                </span>
-                              )}
-                            </td>
-                          </tr>
-                        ))}
-                      </tbody>
-                    </table>
-                  </div>
-                </>
-              )}
-
-              {/* TAB CONTENT: SYSTEM SETTINGS */}
-              {activeTab === 'settings' && (
-                <>
-                  <div className="panel-header-row">
-                    <h3 className="panel-title-with-icon">
-                      <span>⚙️</span> Pengaturan Sistem & Integrasi Server
-                    </h3>
-                  </div>
-
-                  <div style={{ display: 'flex', flexDirection: 'column', gap: '20px', fontSize: '13px' }}>
-                    
-                    {/* Setting Item 1 */}
-                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', paddingBottom: '16px', borderBottom: '1px solid var(--border-color)' }}>
-                      <div>
-                        <p style={{ fontWeight: 'bold' }}>Aktifkan Integrasi API Otomatis RajaOngkir</p>
-                        <p style={{ fontSize: '11px', color: 'var(--text-muted)' }}>Sinkronisasikan biaya jalan tol & cargo rute Jabar secara berkala.</p>
-                      </div>
-                      <input type="checkbox" defaultChecked style={{ width: '20px', height: '20px' }} />
-                    </div>
-
-                    {/* Setting Item 2 */}
-                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', paddingBottom: '16px', borderBottom: '1px solid var(--border-color)' }}>
-                      <div>
-                        <p style={{ fontWeight: 'bold' }}>Sistem Proteksi Overloading (Anti-ODOL)</p>
-                        <p style={{ fontSize: '11px', color: 'var(--text-muted)' }}>Kunci form order otomatis jika tonase melebihi batas armada terpilih.</p>
-                      </div>
-                      <input type="checkbox" defaultChecked style={{ width: '20px', height: '20px' }} />
-                    </div>
-
-                    {/* Setting Item 3 */}
-                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                      <div>
-                        <p style={{ fontWeight: 'bold' }}>Pemberitahuan SMS & WhatsApp Gateway</p>
-                        <p style={{ fontSize: '11px', color: 'var(--text-muted)' }}>Kirim struk digital & nomor resi driver langsung ke konsumen.</p>
-                      </div>
-                      <button className="btn-style-secondary" onClick={() => triggerToast('Tes gateway sukses terkirim!')}>
-                        Tes Koneksi Gateway
-                      </button>
-                    </div>
-
-                  </div>
-                </>
-              )}
-
-            </div>
-
-            {/* COLUMN 2: ANALYTICAL & QUICK ACTIONS (1/3 width) */}
-            <div style={{ display: 'flex', flexDirection: 'column', gap: '24px' }}>
-              
-              {/* Graphic mini chart panel */}
-              <div className="panel-container-card">
-                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                  <h4 style={{ fontFamily: 'Poppins', fontSize: '14px', fontWeight: '700' }}>📈 Trafik Registrasi Anggota</h4>
-                  
-                  {/* Period selectors */}
-                  <select 
-                    value={statsPeriod} 
-                    onChange={(e) => {
-                      setStatsPeriod(e.target.value);
-                      triggerToast(`Rentang trafik diubah ke: ${e.target.value}`);
-                    }}
-                    style={{ border: '1px solid var(--border-color)', fontSize: '11px', padding: '4px', borderRadius: '4px' }}
+              {/* Dynamic Promo Banner Slider */}
+              <div 
+                className="bbg-promo-banner" 
+                style={{ background: SLIDER_PHOTOS[currentSlide].bgGradient }}
+              >
+                <span className="bbg-promo-badge">{SLIDER_PHOTOS[currentSlide].badge}</span>
+                <h1 className="bbg-promo-title">{SLIDER_PHOTOS[currentSlide].title}</h1>
+                <p className="bbg-promo-desc">{SLIDER_PHOTOS[currentSlide].desc}</p>
+                <div style={{ display: 'flex', gap: '12px' }}>
+                  <button 
+                    onClick={() => setShowVipModal(true)} 
+                    className="bbg-vip-badge-btn"
                   >
-                    <option value="daily">Harian</option>
-                    <option value="weekly">Mingguan</option>
-                    <option value="monthly">Bulanan</option>
-                  </select>
-                </div>
-
-                {/* SVG Visual graph */}
-                <div className="chart-visual-box">
-                  <svg className="chart-svg-container" viewBox="0 0 100 50">
-                    {/* Background Grid Lines */}
-                    <line x1="0" y1="10" x2="100" y2="10" stroke="#E0E0E0" strokeWidth="0.5" strokeDasharray="2" />
-                    <line x1="0" y1="25" x2="100" y2="25" stroke="#E0E0E0" strokeWidth="0.5" strokeDasharray="2" />
-                    <line x1="0" y1="40" x2="100" y2="40" stroke="#E0E0E0" strokeWidth="0.5" strokeDasharray="2" />
-
-                    {/* Line Path based on statsPeriod */}
-                    {statsPeriod === 'daily' && (
-                      <path d="M0,45 L20,38 L40,42 L60,18 L80,22 L100,5" fill="none" stroke="var(--primary-blue)" strokeWidth="2.5" />
-                    )}
-                    {statsPeriod === 'weekly' && (
-                      <path d="M0,40 L20,15 L40,30 L60,10 L80,35 L100,12" fill="none" stroke="var(--accent-green)" strokeWidth="2.5" />
-                    )}
-                    {statsPeriod === 'monthly' && (
-                      <path d="M0,35 L20,32 L40,12 L60,25 L80,8 L100,2" fill="none" stroke="var(--primary-blue)" strokeWidth="2.5" />
-                    )}
-
-                    {/* Nodes of chart */}
-                    <circle cx="40" cy={statsPeriod === 'daily' ? 42 : statsPeriod === 'weekly' ? 30 : 12} r="3" fill="var(--primary-blue)" />
-                    <circle cx="80" cy={statsPeriod === 'daily' ? 22 : statsPeriod === 'weekly' ? 35 : 8} r="3" fill="var(--accent-green)" />
-                  </svg>
-                  
-                  {/* Tooltip dynamic simulation */}
-                  <div className="chart-tooltip-bubble" style={{ left: '40%', bottom: '70%' }}>
-                    <span>Konstruksi Utama: +140%</span>
-                  </div>
-                </div>
-
-                <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '11px', color: 'var(--text-muted)' }}>
-                  <span>Periode Awal</span>
-                  <span style={{ fontWeight: 'bold', color: 'var(--dark-gray)' }}>Update Terbaru: Baru Saja</span>
-                  <span>Akhir</span>
-                </div>
-              </div>
-
-              {/* QUICK ACTIONS BUTTONS ROW */}
-              <div className="quick-action-strip">
-                <span className="quick-action-strip-title">⚡ Tindakan Cepat (Quick Actions)</span>
-                
-                <div className="quick-buttons-row">
-                  <button className="btn-style-secondary" style={{ flex: '1 1 45%' }} onClick={() => setShowMemberModal(true)}>
-                    ➕ Tambah Anggota
-                  </button>
-                  <button className="btn-style-secondary" style={{ flex: '1 1 45%' }} onClick={() => setShowBlogModal(true)}>
-                    ✍️ Tulis Artikel
+                    Daftar Akun VIP
                   </button>
                   <button 
-                    className="btn-style-secondary" 
-                    style={{ flex: '1 1 100%' }}
-                    onClick={() => {
-                      const pending = redeems.filter(r => r.status === 'Pending');
-                      if (pending.length === 0) {
-                        triggerToast('Semua permohonan redeem poin sudah tervalidasi!', 'warning');
-                      } else {
-                        setRedeems(prev => prev.map(r => r.status === 'Pending' ? { ...r, status: 'Approved' } : r));
-                        triggerToast(`Berhasil menyetujui massal ${pending.length} klaim poin!`);
-                      }
-                    }}
+                    onClick={() => { setActiveTab('price'); triggerToast('Membuka Kalkulator ODOL'); }}
+                    style={{ background: 'rgba(255,255,255,0.15)', color: '#ffffff', border: '1px solid rgba(255,255,255,0.2)', padding: '8px 16px', borderRadius: '10px', fontSize: '13px', fontWeight: '700', cursor: 'pointer' }}
                   >
-                    🚀 Setujui Semua Pending Redeem
+                    ⚖️ Hitung Toleransi ODOL
                   </button>
+                </div>
+
+                <div className="bbg-promo-dots">
+                  {SLIDER_PHOTOS.map((_, idx) => (
+                    <button 
+                      key={idx} 
+                      onClick={() => setCurrentSlide(idx)}
+                      className={`bbg-promo-dot ${currentSlide === idx ? 'active' : ''}`}
+                    ></button>
+                  ))}
+                </div>
+              </div>
+
+              {/* Grid Categories */}
+              <div className="bbg-interactive-card">
+                <h3 className="bbg-card-title">🧱 Kategori Pengapalan Material Konstruksi</h3>
+                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(180px, 1fr))', gap: '16px' }}>
+                  {PRODUCT_CATEGORIES.map(cat => (
+                    <div 
+                      key={cat.id} 
+                      onClick={() => { setActiveTab('price'); triggerToast(`Menyaring: ${cat.name}`); }}
+                      style={{ padding: '20px', backgroundColor: '#f8fafc', borderRadius: '16px', border: '1px solid #e2e8f0', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '16px', transition: 'all 0.2s ease' }}
+                    >
+                      <span style={{ fontSize: '28px' }}>{cat.icon}</span>
+                      <div>
+                        <h4 style={{ margin: '0 0 4px 0', fontSize: '14px', fontWeight: '700', color: '#0f172a' }}>{cat.name}</h4>
+                        <p style={{ margin: 0, fontSize: '11px', color: '#64748b', fontWeight: '500' }}>{cat.count}</p>
+                      </div>
+                    </div>
+                  ))}
                 </div>
               </div>
 
             </div>
+          )}
 
-          </div>
+          {/* TAB 2: RESI TRACKING */}
+          {activeTab === 'tracking' && (
+            <div className="bbg-interactive-card" style={{ animation: 'fadeIn 0.4s ease' }}>
+              <h3 className="bbg-card-title">🔍 Lacak Pengiriman Material Real-Time</h3>
+              <p style={{ fontSize: '13px', color: '#64748b', marginBottom: '20px' }}>
+                Masukkan ID resi / AWB pengiriman Anda untuk melacak posisi armada kurir truk logistik.
+              </p>
+              
+              <div style={{ display: 'flex', gap: '12px', marginBottom: '32px' }}>
+                <input 
+                  type="text" 
+                  value={searchTrackingId}
+                  onChange={(e) => setSearchTrackingId(e.target.value)}
+                  placeholder="Masukkan Nomor Resi (Contoh: BBG-998122, BBG-776655, BBG-112233)"
+                  className="bbg-form-control"
+                  style={{ maxWidth: '400px' }}
+                />
+                <button 
+                  onClick={() => {
+                    if (searchedShipment) {
+                      triggerToast(`Resi ${searchTrackingId} ditemukan!`);
+                    } else {
+                      triggerToast('Resi tidak ditemukan. Cek kembali ID Anda.');
+                    }
+                  }}
+                  className="bbg-btn-primary"
+                >
+                  CEK RESI
+                </button>
+              </div>
 
-          {/* =======================================================
-              FOOTER BRAND CREDITS
-              ======================================================= */}
-          <footer className="footer-copyright-strip">
-            <div>
-              <p>© 2026 <b>BahanBangunGo Enterprise Dashboard Ltd.</b> Seluruh Hak Cipta Dilindungi.</p>
-              <p style={{ fontSize: '10px', marginTop: '2px' }}>Didesain presisi berdasarkan instruksi manual figma high fidelity.</p>
+              {searchedShipment ? (
+                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(300px, 1fr))', gap: '32px' }}>
+                  
+                  {/* Data Ringkas Paket */}
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
+                    <div style={{ borderBottom: '1px solid #e2e8f0', paddingBottom: '16px' }}>
+                      <span style={{ backgroundColor: '#dcfce7', color: '#15803d', fontSize: '10px', fontWeight: '700', padding: '4px 10px', borderRadius: '6px', textTransform: 'uppercase' }}>
+                        {searchedShipment.status}
+                      </span>
+                      <h4 style={{ fontSize: '18px', fontWeight: '800', margin: '12px 0 4px 0', color: '#0f172a' }}>{searchedShipment.id}</h4>
+                      <p style={{ margin: 0, fontSize: '12px', color: '#64748b' }}>Pengapalan: {searchedShipment.date}</p>
+                    </div>
+
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: '10px', fontSize: '13px', color: '#334155' }}>
+                      <p>📦 <b>Barang Muatan:</b> {searchedShipment.item}</p>
+                      <p>🚛 <b>Armada Truk:</b> {searchedShipment.fleet}</p>
+                      <p>👨‍✈️ <b>Nama Driver:</b> {searchedShipment.driver}</p>
+                      <p>⏳ <b>Estimasi Tiba:</b> {searchedShipment.eta}</p>
+                    </div>
+                  </div>
+
+                  {/* Visual Stepper Progress */}
+                  <div className="bbg-timeline-container">
+                    <h5 style={{ margin: '0 0 10px 0', fontSize: '14px', fontWeight: '700', color: '#0f172a' }}>Timeline Rute Pengiriman:</h5>
+                    
+                    <div className="bbg-timeline-progress-bar">
+                      <div className="bbg-timeline-progress-fill" style={{ width: `${searchedShipment.progress}%` }}></div>
+                    </div>
+
+                    <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '11px', fontWeight: '700', color: '#64748b' }}>
+                      <span style={{ color: searchedShipment.progress >= 25 ? '#00805a' : '#64748b' }}>Disiapkan</span>
+                      <span style={{ color: searchedShipment.progress >= 50 ? '#00805a' : '#64748b' }}>Dalam Perjalanan</span>
+                      <span style={{ color: searchedShipment.progress >= 100 ? '#00805a' : '#64748b' }}>Selesai / Tiba</span>
+                    </div>
+
+                    <div style={{ backgroundColor: '#f1f5f9', borderLeft: '4px solid #00805a', padding: '12px', borderRadius: '8px', fontSize: '12px', color: '#334155', fontStyle: 'italic', marginTop: '10px' }}>
+                      "{searchedShipment.statusDetail}"
+                    </div>
+                  </div>
+
+                </div>
+              ) : (
+                <div style={{ padding: '40px', textAlign: 'center', backgroundColor: '#f8fafc', borderRadius: '16px', border: '1px solid #e2e8f0', color: '#64748b' }}>
+                  ⚠️ Nomor resi tidak ditemukan. Gunakan ID demo bawaan seperti <b>BBG-998122</b> atau <b>BBG-776655</b>.
+                </div>
+              )}
             </div>
-            <div>
-              <ul className="footer-links-list">
-                <li><a href="#privacy" onClick={(e) => { e.preventDefault(); triggerToast('Kebijakan Privasi Sistem'); }}>Privasi</a></li>
-                <li><a href="#terms" onClick={(e) => { e.preventDefault(); triggerToast('Ketentuan Layanan Kargo'); }}>Syarat & Ketentuan</a></li>
-                <li><a href="#help" onClick={(e) => { e.preventDefault(); triggerToast('Menghubungi Pusat Bantuan...'); }}>Bantuan</a></li>
-              </ul>
+          )}
+
+          {/* TAB 3: CEK HARGA & KALKULATOR ODOL */}
+          {activeTab === 'price' && (
+            <div className="bbg-interactive-card" style={{ animation: 'fadeIn 0.4s ease' }}>
+              <h3 className="bbg-card-title">⚖️ Kalkulator Ongkir & Keamanan Muatan (Anti-ODOL)</h3>
+              
+              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))', gap: '32px' }}>
+                
+                {/* Inputs */}
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
+                  <div>
+                    <label style={{ display: 'block', fontSize: '11px', fontWeight: '700', color: '#64748b', textTransform: 'uppercase', marginBottom: '6px' }}>Pilih Tipe Armada</label>
+                    <select 
+                      value={calcFleet} 
+                      onChange={(e) => setCalcFleet(e.target.value)}
+                      className="bbg-form-control"
+                    >
+                      <option value="pickup">🚗 Mobil Pick-Up (Maks 1.5 Ton)</option>
+                      <option value="engkel">🚚 Truk Engkel CDE (Maks 3 Ton)</option>
+                      <option value="double">🚛 Truk Double CDD (Maks 7 Ton)</option>
+                    </select>
+                  </div>
+
+                  <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '16px' }}>
+                    <div>
+                      <label style={{ display: 'block', fontSize: '11px', fontWeight: '700', color: '#64748b', textTransform: 'uppercase', marginBottom: '6px' }}>Jarak Rute (Km)</label>
+                      <input 
+                        type="number" 
+                        value={calcDistance} 
+                        onChange={(e) => setCalcDistance(Math.max(1, parseInt(e.target.value) || 0))}
+                        className="bbg-form-control"
+                      />
+                    </div>
+                    <div>
+                      <label style={{ display: 'block', fontSize: '11px', fontWeight: '700', color: '#64748b', textTransform: 'uppercase', marginBottom: '6px' }}>Berat Muatan (Kg)</label>
+                      <input 
+                        type="number" 
+                        value={calcWeight} 
+                        onChange={(e) => setCalcWeight(Math.max(1, parseInt(e.target.value) || 0))}
+                        className="bbg-form-control"
+                      />
+                    </div>
+                  </div>
+
+                  <div>
+                    <label style={{ display: 'block', fontSize: '11px', fontWeight: '700', color: '#64748b', textTransform: 'uppercase', marginBottom: '6px' }}>Volume Muatan (m³)</label>
+                    <input 
+                      type="number" 
+                      step="0.1"
+                      value={calcVolume} 
+                      onChange={(e) => setCalcVolume(Math.max(0.1, parseFloat(e.target.value) || 0))}
+                      className="bbg-form-control"
+                    />
+                  </div>
+
+                  <label style={{ display: 'flex', alignItems: 'center', gap: '10px', fontSize: '13px', fontWeight: '600', cursor: 'pointer' }}>
+                    <input 
+                      type="checkbox" 
+                      checked={helperService}
+                      onChange={(e) => setHelperService(e.target.checked)}
+                      style={{ width: '18px', height: '18px', accentColor: '#00805a' }}
+                    />
+                    <span>Gunakan Jasa Helper Bongkar Muat (+Rp50.000)</span>
+                  </label>
+                </div>
+
+                {/* Pricing Summary Box */}
+                <div style={{ backgroundColor: '#f8fafc', border: '1px solid #e2e8f0', borderRadius: '20px', padding: '32px', display: 'flex', flexDirection: 'column', justifyContent: 'space-between' }}>
+                  <div>
+                    <span style={{ fontSize: '11px', color: '#64748b', fontWeight: '700', textTransform: 'uppercase' }}>Estimasi Biaya Pengiriman</span>
+                    <h1 style={{ fontSize: '32px', fontWeight: '800', color: '#0f172a', margin: '8px 0 24px 0' }}>
+                      Rp {calculatedPrice.toLocaleString('id-ID')}
+                    </h1>
+
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: '12px', fontSize: '13px', color: '#475569', borderTop: '1px solid #e2e8f0', paddingTop: '20px' }}>
+                      <p>🛣️ <b>Total Jarak:</b> {calcDistance} Km</p>
+                      <p>⚖️ <b>Bobot Muatan:</b> {calcWeight} Kg</p>
+                      <p>📐 <b>Volume Muatan:</b> {calcVolume} m³</p>
+                    </div>
+                  </div>
+
+                  {/* ODOL Safety warning banner */}
+                  <div style={{ 
+                    marginTop: '24px', 
+                    padding: '16px', 
+                    borderRadius: '12px', 
+                    fontSize: '12px', 
+                    fontWeight: '600', 
+                    border: '1px solid',
+                    backgroundColor: odolAlert ? '#fef2f2' : '#f0fdf4',
+                    borderColor: odolAlert ? '#fca5a5' : '#bbf7d0',
+                    color: odolAlert ? '#991b1b' : '#166534'
+                  }}>
+                    {odolAlert ? (
+                      <span>🚨 <b>Overloading Warning (ODOL)!</b> Bobot melebihi kapasitas standar armada pilihan Anda. Harap tingkatkan armada atau pecah muatan demi keselamatan.</span>
+                    ) : (
+                      <span>✅ <b>Muatan Aman!</b> Berat muatan Anda sesuai dengan regulasi kapasitas angkut jalan raya nasional.</span>
+                    )}
+                  </div>
+                </div>
+
+              </div>
             </div>
-          </footer>
+          )}
+
+          {/* TAB 4: CABANG HUB DEPOT */}
+          {activeTab === 'outlet' && (
+            <div className="bbg-interactive-card" style={{ animation: 'fadeIn 0.4s ease' }}>
+              <h3 className="bbg-card-title">🏪 Hub Depot Utama & Pusat Distribusi</h3>
+              
+              {/* Region Filter Buttons */}
+              <div style={{ display: 'flex', gap: '10px', marginBottom: '24px' }}>
+                {['Jakarta', 'Tangerang', 'Bekasi', 'Bandung'].map(city => (
+                  <button
+                    key={city}
+                    onClick={() => setSelectedRegion(city)}
+                    style={{ 
+                      padding: '8px 16px', 
+                      borderRadius: '8px', 
+                      fontSize: '13px', 
+                      fontWeight: '700', 
+                      border: '1px solid',
+                      cursor: 'pointer',
+                      backgroundColor: selectedRegion === city ? '#00805a' : '#ffffff',
+                      color: selectedRegion === city ? '#ffffff' : '#475569',
+                      borderColor: selectedRegion === city ? '#00805a' : '#cbd5e1'
+                    }}
+                  >
+                    {city}
+                  </button>
+                ))}
+              </div>
+
+              {/* Grid Hub Depots */}
+              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))', gap: '20px' }}>
+                {DEPOT_OUTLETS.filter(o => o.region === selectedRegion).map((outlet, idx) => (
+                  <div key={idx} style={{ padding: '24px', backgroundColor: '#f8fafc', border: '1px solid #e2e8f0', borderRadius: '16px', display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
+                    <div>
+                      <h4 style={{ margin: '0 0 8px 0', fontSize: '15px', fontWeight: '700', color: '#0f172a' }}>{outlet.name}</h4>
+                      <p style={{ margin: '0 0 12px 0', fontSize: '12px', color: '#64748b', lineHeight: '1.4' }}>{outlet.address}</p>
+                      <p style={{ margin: 0, fontSize: '12px', color: '#00805a', fontWeight: '700' }}>📞 {outlet.tel}</p>
+                    </div>
+                    <span style={{ backgroundColor: '#dcfce7', color: '#15803d', fontSize: '10px', fontWeight: '700', padding: '4px 8px', borderRadius: '6px' }}>
+                      BUKA
+                    </span>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
+
+          {/* TAB 5: SIMULATOR PERAN (MULTI-ROLE SANDBOX) */}
+          {activeTab === 'simulator' && (
+            <div className="bbg-interactive-card" style={{ animation: 'fadeIn 0.4s ease' }}>
+              <div style={{ borderBottom: '1px solid #e2e8f0', paddingBottom: '16px', marginBottom: '24px' }}>
+                <h3 className="bbg-card-title" style={{ marginBottom: '8px' }}>🎛️ Simulator Sandboks Multi-Peran</h3>
+                <p style={{ fontSize: '13px', color: '#64748b', margin: 0 }}>
+                  Ubah peran Anda di bawah ini untuk mensimulasikan alur pengiriman semen/pasir, konfirmasi toko, hingga tanda tangan serah terima digital.
+                </p>
+              </div>
+
+              {/* Selector Mode Sandbox */}
+              <div style={{ display: 'flex', gap: '8px', marginBottom: '32px', backgroundColor: '#f1f5f9', padding: '6px', borderRadius: '12px', width: 'fit-content' }}>
+                {[
+                  { id: 'customer', label: 'Konsumen', icon: '👤' },
+                  { id: 'merchant', label: 'Toko Material', icon: '🏪' },
+                  { id: 'driver', label: 'Sopir Truk', icon: '🚛' }
+                ].map(role => (
+                  <button
+                    key={role.id}
+                    onClick={() => { setActiveRole(role.id); triggerToast(`Ubah Mode Simulasi: ${role.label}`); }}
+                    style={{
+                      display: 'flex',
+                      alignItems: 'center',
+                      gap: '8px',
+                      padding: '8px 16px',
+                      borderRadius: '8px',
+                      fontSize: '13px',
+                      fontWeight: '700',
+                      border: 'none',
+                      cursor: 'pointer',
+                      backgroundColor: activeRole === role.id ? '#0f172a' : 'transparent',
+                      color: activeRole === role.id ? '#ffffff' : '#64748b'
+                    }}
+                  >
+                    <span>{role.icon}</span>
+                    <span>{role.label}</span>
+                  </button>
+                ))}
+              </div>
+
+              {/* SIMULATOR SCREEN CONTENT BY ACTIVE ROLE */}
+              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(300px, 1fr))', gap: '32px' }}>
+                
+                {/* LEFT SIDE: ACTION PANEL */}
+                <div>
+                  
+                  {/* ROLE 1: CUSTOMER VIEW */}
+                  {activeRole === 'customer' && (
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
+                      <h4 style={{ margin: 0, fontSize: '15px', color: '#0f172a', fontWeight: '700' }}>🛒 Panel Pelanggan (Pilih & Pantau Resi)</h4>
+                      
+                      <div style={{ backgroundColor: '#f8fafc', padding: '16px', borderRadius: '12px', border: '1px solid #e2e8f0', fontSize: '13px' }}>
+                        <p style={{ margin: '0 0 4px 0', color: '#64748b' }}>Simulasi Paket Belanja:</p>
+                        <p style={{ margin: 0, fontWeight: '700' }}>20 Sak Semen Padang (1 Ton) - Rp 1.440.000</p>
+                      </div>
+
+                      <div>
+                        <p style={{ fontSize: '12px', fontWeight: '700', color: '#64748b', marginBottom: '8px' }}>PILIH ID RESI UNTUK DIPANTAU:</p>
+                        <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+                          {shipments.map(s => (
+                            <button
+                              key={s.id}
+                              onClick={() => { setSelectedShipmentId(s.id); setSearchTrackingId(s.id); triggerToast(`Memilih Resi ${s.id}`); }}
+                              style={{
+                                padding: '12px',
+                                borderRadius: '10px',
+                                border: '1px solid',
+                                cursor: 'pointer',
+                                textAlign: 'left',
+                                fontSize: '12px',
+                                fontWeight: '600',
+                                backgroundColor: selectedShipmentId === s.id ? '#f0fdf4' : '#ffffff',
+                                borderColor: selectedShipmentId === s.id ? '#00805a' : '#e2e8f0',
+                                color: selectedShipmentId === s.id ? '#00805a' : '#334155'
+                              }}
+                            >
+                              🚚 <b>{s.id}</b> ({s.item}) - {s.status}
+                            </button>
+                          ))}
+                        </div>
+                      </div>
+                    </div>
+                  )}
+
+                  {/* ROLE 2: MERCHANT VIEW */}
+                  {activeRole === 'merchant' && (
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
+                      <h4 style={{ margin: 0, fontSize: '15px', color: '#0f172a', fontWeight: '700' }}>🏪 Panel Mitra Toko (Konfirmasi Material)</h4>
+                      <p style={{ fontSize: '13px', color: '#475569', margin: 0 }}>
+                        Gunakan simulator tombol di bawah untuk menggerakkan status pengiriman kurir di database BahanBangunGo.
+                      </p>
+
+                      <div style={{ display: 'flex', gap: '12px' }}>
+                        <button onClick={handleSimulateProgress} className="bbg-btn-primary">
+                          ⚡ Jalankan Kurir (Update Progress)
+                        </button>
+                        <button 
+                          onClick={() => { setShipments(INITIAL_SHIPMENTS); triggerToast('Database simulasi disetel ulang'); }}
+                          style={{ padding: '12px 20px', borderRadius: '12px', border: '1px solid #cbd5e1', backgroundColor: '#ffffff', color: '#475569', fontSize: '13px', fontWeight: '700', cursor: 'pointer' }}
+                        >
+                          Reset Data
+                        </button>
+                      </div>
+                    </div>
+                  )}
+
+                  {/* ROLE 3: DRIVER VIEW */}
+                  {activeRole === 'driver' && (
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
+                      <h4 style={{ margin: 0, fontSize: '15px', color: '#0f172a', fontWeight: '700' }}>🚛 Aplikasi Sopir (Bukti Pengiriman - PoD)</h4>
+                      <p style={{ fontSize: '12px', color: '#64748b', margin: 0 }}>
+                        Gunakan modul ini di lokasi bongkar muatan semen/pasir proyek untuk meminta bukti foto & tanda tangan penerima.
+                      </p>
+
+                      {/* Photo upload mock */}
+                      <div style={{ border: '1px dashed #cbd5e1', borderRadius: '16px', padding: '20px', textAlign: 'center', backgroundColor: '#f8fafc' }}>
+                        {podPhoto ? (
+                          <div style={{ position: 'relative' }}>
+                            <img src={podPhoto} alt="POD" style={{ width: '100%', maxHeight: '140px', objectFit: 'cover', borderRadius: '8px' }} />
+                            <button 
+                              onClick={() => setPodPhoto(null)}
+                              style={{ position: 'absolute', top: '8px', right: '8px', backgroundColor: '#ef4444', color: '#ffffff', border: 'none', borderRadius: '4px', fontSize: '10px', padding: '4px 8px', cursor: 'pointer' }}
+                            >
+                              Hapus
+                            </button>
+                          </div>
+                        ) : (
+                          <div>
+                            <span style={{ fontSize: '28px', display: 'block', marginBottom: '8px' }}>📷</span>
+                            <p style={{ margin: '0 0 10px 0', fontSize: '12px', fontWeight: '700' }}>Ambil Foto Material Bongkar</p>
+                            <button 
+                              onClick={() => setPodPhoto('https://images.unsplash.com/photo-1590069261209-f8e9b8642343?auto=format&fit=crop&w=600&q=80')}
+                              style={{ padding: '6px 12px', fontSize: '11px', fontWeight: '700', borderRadius: '6px', border: '1px solid #cbd5e1', backgroundColor: '#ffffff', cursor: 'pointer' }}
+                            >
+                              Gunakan Kamera Simulasi
+                            </button>
+                          </div>
+                        )}
+                      </div>
+
+                      {/* Signature Canvas */}
+                      <div style={{ border: '1px solid #cbd5e1', borderRadius: '16px', padding: '16px', backgroundColor: '#ffffff' }}>
+                        <p style={{ margin: '0 0 8px 0', fontSize: '11px', fontWeight: '700', color: '#64748b', textTransform: 'uppercase' }}>Tanda Tangan Penerima:</p>
+                        
+                        <div style={{ height: '90px', border: '1px solid #e2e8f0', borderRadius: '8px', position: 'relative', overflow: 'hidden' }}>
+                          <canvas
+                            ref={canvasRef}
+                            onMouseDown={startDrawing}
+                            onMouseMove={draw}
+                            onMouseUp={() => setIsDrawing(false)}
+                            onTouchStart={startDrawing}
+                            onTouchMove={draw}
+                            onTouchEnd={() => setIsDrawing(false)}
+                            style={{ display: 'block', width: '100%', height: '100%', cursor: 'crosshair' }}
+                          />
+                          {signatureSaved && (
+                            <div style={{ position: 'absolute', inset: 0, backgroundColor: 'rgba(220, 252, 231, 0.9)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '12px', fontWeight: '700', color: '#15803d' }}>
+                              ✅ Tanda Tangan Terkunci
+                            </div>
+                          )}
+                        </div>
+
+                        <div style={{ display: 'flex', justifyContent: 'space-between', marginTop: '10px' }}>
+                          <button 
+                            onClick={() => {
+                              const canvas = canvasRef.current;
+                              if (canvas) {
+                                const ctx = canvas.getContext('2d');
+                                ctx.clearRect(0, 0, canvas.width, canvas.height);
+                                setSignatureSaved(false);
+                              }
+                            }}
+                            style={{ border: 'none', background: 'none', color: '#ef4444', fontSize: '11px', fontWeight: '700', cursor: 'pointer' }}
+                          >
+                            Hapus TTD
+                          </button>
+                          <button 
+                            onClick={saveSignature}
+                            style={{ border: 'none', background: 'none', color: '#00805a', fontSize: '11px', fontWeight: '700', cursor: 'pointer' }}
+                          >
+                            Kunci TTD
+                          </button>
+                        </div>
+                      </div>
+
+                      <button
+                        onClick={() => handleCompleteDelivery(selectedShipmentId)}
+                        disabled={!podPhoto || !signatureSaved}
+                        className="bbg-btn-primary"
+                        style={{ opacity: (podPhoto && signatureSaved) ? 1 : 0.5, cursor: (podPhoto && signatureSaved) ? 'pointer' : 'not-allowed' }}
+                      >
+                        Selesaikan Pengantaran Paket ✔️
+                      </button>
+                    </div>
+                  )}
+
+                </div>
+
+                {/* RIGHT SIDE: HUB DATABASE MONITOR */}
+                <div style={{ backgroundColor: '#f8fafc', padding: '24px', borderRadius: '20px', border: '1px solid #e2e8f0' }}>
+                  <h4 style={{ margin: '0 0 16px 0', fontSize: '13px', color: '#64748b', fontWeight: '700', textTransform: 'uppercase', letterSpacing: '0.05em' }}>
+                    Monitor Basis Data (Database Hub)
+                  </h4>
+
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
+                    {shipments.map(s => (
+                      <div 
+                        key={s.id} 
+                        style={{ padding: '16px', backgroundColor: '#ffffff', borderRadius: '12px', border: '1px solid #cbd5e1', fontSize: '12px' }}
+                      >
+                        <div style={{ display: 'flex', justifyContent: 'space-between', fontWeight: '700', marginBottom: '4px' }}>
+                          <span style={{ color: '#0f172a' }}>{s.id}</span>
+                          <span style={{ color: '#00805a' }}>{s.status}</span>
+                        </div>
+                        <p style={{ margin: '0 0 8px 0', color: '#64748b' }}>{s.item}</p>
+                        
+                        {/* mini progress fills */}
+                        <div style={{ height: '4px', backgroundColor: '#e2e8f0', borderRadius: '2px', overflow: 'hidden' }}>
+                          <div style={{ height: '100%', backgroundColor: '#00805a', width: `${s.progress}%` }}></div>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+
+              </div>
+            </div>
+          )}
 
         </div>
+
+        {/* FOOTER */}
+        <footer style={{ backgroundColor: '#0f172a', color: '#94a3b8', padding: '24px 40px', fontSize: '12px', borderTop: '1px solid #1e293b', marginTop: 'auto', textAlign: 'center' }}>
+          <p style={{ margin: 0 }}>© 2026 BahanBangunGo Cargo Portal. Hak Cipta Dilindungi Undang-Undang.</p>
+        </footer>
 
       </main>
 
-      {/* =======================================================
-          MODAL: ADD NEW MEMBER
-          ======================================================= */}
-      {showMemberModal && (
-        <div className="modal-overlay-bg">
-          <div className="modal-body-container">
-            <div className="modal-header-row">
-              <h3 className="modal-title">➕ Registrasi Anggota Mitra Baru</h3>
-              <button className="close-modal-btn" onClick={() => setShowMemberModal(false)}>✕</button>
-            </div>
+      {/* ==========================================
+          FLOATING QUICK ACTIONS WIDGETS
+          ========================================== */}
+      <div className="bbg-floating-widget">
+        <button onClick={() => { setActiveTab('price'); triggerToast('Membuka Kalkulator Ongkos Kirim'); }} title="Cek Tarif" className="bbg-floating-btn">📊</button>
+        <button onClick={() => { setActiveTab('outlet'); triggerToast('Membuka Peta Lokasi Depot'); }} title="Lokasi Hub" className="bbg-floating-btn">📍</button>
+        <button onClick={() => setShowVipModal(true)} title="VIP Registrasi" className="bbg-floating-btn">👑</button>
+      </div>
 
-            <form onSubmit={handleAddMember}>
-              <div className="form-group-field">
-                <label className="form-label-style">Nama Lengkap Anggota</label>
+      {/* ==========================================
+          MODAL REGISTRASI VIP CLIENT (B2B PORTAL)
+          ========================================== */}
+      {showVipModal && (
+        <div className="bbg-modal-overlay">
+          <div className="bbg-modal-card">
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '16px' }}>
+              <h3 style={{ margin: 0, fontSize: '18px', fontWeight: '800', color: '#0f172a' }}>👑 Pengajuan VIP Client B2B</h3>
+              <button 
+                onClick={() => setShowVipModal(false)}
+                style={{ background: 'none', border: 'none', fontSize: '20px', cursor: 'pointer', color: '#64748b' }}
+              >
+                ✕
+              </button>
+            </div>
+            
+            <p style={{ fontSize: '12px', color: '#64748b', marginBottom: '24px', lineHeight: '1.5' }}>
+              Dapatkan keuntungan pembayaran tempo 30 hari, proteksi jaminan anti-ODOL secara gratis, flat-rate pengiriman 10%, dan bantuan prioritas armada.
+            </p>
+
+            <form 
+              onSubmit={(e) => {
+                e.preventDefault();
+                setShowVipModal(false);
+                triggerToast(`Sukses mendaftarkan perusahaan ${vipForm.company}! Tim B2B kami akan segera menghubungi Anda.`);
+              }}
+              style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}
+            >
+              <div>
+                <label style={{ display: 'block', fontSize: '11px', fontWeight: '700', color: '#64748b', textTransform: 'uppercase', marginBottom: '4px' }}>Nama Perusahaan</label>
                 <input 
                   type="text" 
-                  placeholder="Contoh: Joko Wicaksono"
-                  value={memberForm.name}
-                  onChange={(e) => setMemberForm({ ...memberForm, name: e.target.value })}
-                  className="form-input-control"
+                  value={vipForm.company}
+                  onChange={(e) => setVipForm({ ...vipForm, company: e.target.value })}
+                  placeholder="Contoh: PT. Adhi Karya Semesta"
+                  className="bbg-form-control"
                   required
                 />
               </div>
 
-              <div className="form-group-field">
-                <label className="form-label-style">Alamat E-Mail Resmi</label>
-                <input 
-                  type="email" 
-                  placeholder="joko.wicaksono@kontraktor.id"
-                  value={memberForm.email}
-                  onChange={(e) => setMemberForm({ ...memberForm, email: e.target.value })}
-                  className="form-input-control"
-                  required
-                />
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px' }}>
+                <div>
+                  <label style={{ display: 'block', fontSize: '11px', fontWeight: '700', color: '#64748b', textTransform: 'uppercase', marginBottom: '4px' }}>Nama PIC</label>
+                  <input 
+                    type="text" 
+                    value={vipForm.pic}
+                    onChange={(e) => setVipForm({ ...vipForm, pic: e.target.value })}
+                    placeholder="Nama Anda"
+                    className="bbg-form-control"
+                    required
+                  />
+                </div>
+                <div>
+                  <label style={{ display: 'block', fontSize: '11px', fontWeight: '700', color: '#64748b', textTransform: 'uppercase', marginBottom: '4px' }}>Nomor HP</label>
+                  <input 
+                    type="text" 
+                    value={vipForm.phone}
+                    onChange={(e) => setVipForm({ ...vipForm, phone: e.target.value })}
+                    placeholder="Nomor Telepon"
+                    className="bbg-form-control"
+                    required
+                  />
+                </div>
               </div>
 
-              <div className="form-group-field">
-                <label className="form-label-style">Kemitraan (Role)</label>
-                <select 
-                  value={memberForm.role}
-                  onChange={(e) => setMemberForm({ ...memberForm, role: e.target.value })}
-                  className="form-input-control"
-                >
-                  <option value="Premium Contractor">Premium Contractor</option>
-                  <option value="Supplier Partner">Supplier Partner</option>
-                  <option value="Architect Partner">Architect Partner</option>
-                  <option value="VVIP Client">VVIP Client</option>
-                </select>
-              </div>
-
-              <div style={{ display: 'flex', gap: '12px', marginTop: '20px', justifyContent: 'flex-end' }}>
-                <button type="button" className="btn-style-secondary" onClick={() => setShowMemberModal(false)}>
-                  Batalkan
-                </button>
-                <button type="submit" className="btn-style-primary">
-                  Simpan Anggota
-                </button>
-              </div>
-            </form>
-          </div>
-        </div>
-      )}
-
-      {/* =======================================================
-          MODAL: WRITE NEW BLOG
-          ======================================================= */}
-      {showBlogModal && (
-        <div className="modal-overlay-bg">
-          <div className="modal-body-container">
-            <div className="modal-header-row">
-              <h3 className="modal-title">✍️ Tulis & Terbitkan Artikel Proyek</h3>
-              <button className="close-modal-btn" onClick={() => setShowBlogModal(false)}>✕</button>
-            </div>
-
-            <form onSubmit={handleAddBlog}>
-              <div className="form-group-field">
-                <label className="form-label-style">Judul Artikel Kreatif</label>
-                <input 
-                  type="text" 
-                  placeholder="Contoh: Metode Cepat Memasang Besi Beton SNI"
-                  value={blogForm.title}
-                  onChange={(e) => setBlogForm({ ...blogForm, title: e.target.value })}
-                  className="form-input-control"
-                  required
-                />
-              </div>
-
-              <div className="form-group-field">
-                <label className="form-label-style">Kategori Topik</label>
-                <select 
-                  value={blogForm.category}
-                  onChange={(e) => setBlogForm({ ...blogForm, category: e.target.value })}
-                  className="form-input-control"
-                >
-                  <option value="Inovasi">Inovasi</option>
-                  <option value="Logistik">Logistik</option>
-                  <option value="Keuangan">Keuangan</option>
-                  <option value="Material">Material</option>
-                </select>
-              </div>
-
-              <div className="form-group-field">
-                <label className="form-label-style">Isi Draf Artikel</label>
+              <div>
+                <label style={{ display: 'block', fontSize: '11px', fontWeight: '700', color: '#64748b', textTransform: 'uppercase', marginBottom: '4px' }}>Alamat Kantor</label>
                 <textarea 
-                  rows="4"
-                  placeholder="Ketik rincian panduan material sipil di sini..."
-                  value={blogForm.content}
-                  onChange={(e) => setBlogForm({ ...blogForm, content: e.target.value })}
-                  className="form-input-control"
-                  style={{ resize: 'none' }}
+                  value={vipForm.address}
+                  onChange={(e) => setVipForm({ ...vipForm, address: e.target.value })}
+                  placeholder="Alamat Lengkap Perusahaan"
+                  className="bbg-form-control"
+                  style={{ height: '70px', resize: 'none' }}
+                  required
                 />
               </div>
 
-              <div style={{ display: 'flex', gap: '12px', marginTop: '20px', justifyContent: 'flex-end' }}>
-                <button type="button" className="btn-style-secondary" onClick={() => setShowBlogModal(false)}>
-                  Kembali
-                </button>
-                <button type="submit" className="btn-style-primary">
-                  Terbitkan Live
-                </button>
-              </div>
+              <button type="submit" className="bbg-btn-primary" style={{ marginTop: '10px' }}>
+                KIRIM PENGAJUAN VIP PROYEK 🚀
+              </button>
             </form>
           </div>
         </div>
