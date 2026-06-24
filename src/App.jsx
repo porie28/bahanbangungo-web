@@ -57,6 +57,12 @@ export default function App() {
     }
   ]);
 
+  // Admin Backend Specific States
+  const [selectedAdminOrder, setSelectedAdminOrder] = useState(null);
+  const [adminSelectedMerchant, setAdminSelectedMerchant] = useState('m1');
+  const [adminSelectedDriver, setAdminSelectedDriver] = useState('Pak Rudi (Armada Truk Engkel CDE)');
+  const [systemSafetyMargin, setSystemSafetyMargin] = useState(10); // Toleransi ODOL dalam %
+
   // Customer Shopping States
   const [cart, setCart] = useState([]);
   const [customerLat, setCustomerLat] = useState(-6.214);
@@ -90,6 +96,18 @@ export default function App() {
     }, 6000);
     return () => clearInterval(timer);
   }, []);
+
+  // Reset tab aktif jika berganti ke peran yang tidak memiliki akses tab belanja
+  useEffect(() => {
+    if (role === 'admin' && (activeTab === 'browse' || activeTab === 'cart')) {
+      setActiveTab('dashboard');
+      triggerToast('Akses Tab Belanja Ditutup untuk Peran Admin');
+    } else if (role === 'driver' && (activeTab === 'browse' || activeTab === 'cart')) {
+      setActiveTab('orders');
+    } else if (role === 'merchant' && (activeTab === 'browse' || activeTab === 'cart')) {
+      setActiveTab('orders');
+    }
+  }, [role]);
 
   const triggerToast = (msg) => {
     setToastMessage(msg);
@@ -150,7 +168,7 @@ export default function App() {
     const orderId = 'BBG-' + Math.floor(100000 + Math.random() * 900000);
     const newOrder = {
       id: orderId,
-      date: '23 Juni 2026',
+      date: '24 Juni 2026',
       scheduledFor: 'Segera Kirim (Instant)',
       items: [...cart],
       totalWeight: cartTotalWeight,
@@ -177,23 +195,30 @@ export default function App() {
     setActiveTab('orders');
   };
 
-  const handleAdminApprove = (orderId) => {
+  const handleAdminApproveAndDispatch = (orderId) => {
     setOrders(orders.map(o => {
       if (o.id === orderId) {
-        const history = [...o.history, { status: 'Dikonfirmasi', time: 'Just Now', desc: 'Admin menyetujui transaksi dan mengirim tugas ke Toko.' }];
-        return { ...o, status: 'Disiapkan oleh Toko', history };
+        const history = [...o.history, { status: 'Dikonfirmasi', time: 'Just Now', desc: `Admin (Broker) mengesahkan order, meneruskan penyiapan fisik ke Toko (ID: ${adminSelectedMerchant}) dengan Driver: ${adminSelectedDriver}.` }];
+        return { 
+          ...o, 
+          status: 'Disiapkan oleh Toko', 
+          merchantId: adminSelectedMerchant,
+          driverName: adminSelectedDriver,
+          history 
+        };
       }
       return o;
     }));
-    addNotification(`Pesanan ${orderId} telah disetujui & dialokasikan ke TB. Maju Jaya Sentosa.`);
-    triggerToast('Pesanan disetujui admin!');
+    addNotification(`Pesanan ${orderId} telah diperiksa Admin & diteruskan ke mitra toko.`);
+    triggerToast('Alokasi logistik & penugasan kurir sukses!');
+    setSelectedAdminOrder(null);
   };
 
   const handleMerchantReady = (orderId) => {
     setOrders(orders.map(o => {
       if (o.id === orderId) {
         const history = [...o.history, { status: 'Picked Up', time: 'Just Now', desc: 'Barang selesai dikemas & diserahkan kepada Driver.' }];
-        return { ...o, status: 'Dalam Perjalanan', driverName: 'Pak Rudi (Armada Truk Engkel CDE)', history };
+        return { ...o, status: 'Dalam Perjalanan', history };
       }
       return o;
     }));
@@ -530,6 +555,37 @@ export default function App() {
           box-shadow: 0 0 12px #FF5A36;
         }
 
+        /* Custom Modal Drawer for Backend Admin */
+        .bbg-drawer-overlay {
+          position: fixed;
+          top: 0;
+          left: 0;
+          right: 0;
+          bottom: 0;
+          background-color: rgba(15, 23, 42, 0.6);
+          backdrop-filter: blur(4px);
+          display: flex;
+          justify-content: flex-end;
+          z-index: 100;
+        }
+
+        .bbg-drawer-content {
+          width: 550px;
+          max-width: 100%;
+          background-color: #ffffff;
+          height: 100vh;
+          box-shadow: -10px 0 30px rgba(0, 0, 0, 0.15);
+          display: flex;
+          flex-direction: column;
+          animation: slideInRight 0.3s ease-out;
+          overflow-y: auto;
+        }
+
+        @keyframes slideInRight {
+          from { transform: translateX(100%); }
+          to { transform: translateX(0); }
+        }
+
         /* Responsive Breakpoints */
         @media (max-width: 968px) {
           .bbg-dashboard-wrapper {
@@ -575,7 +631,7 @@ export default function App() {
           <span>🏗️</span> BahanBangun<span>Go</span>
         </div>
         
-        {/* Navigasi Berdasarkan Menu */}
+        {/* Navigasi Berdasarkan Menu - Dinonaktifkan Bagian Belanja untuk Admin Backend */}
         <div className="bbg-menu-list">
           <button 
             onClick={() => { setActiveTab('dashboard'); triggerToast('Membuka Dasbor Utama'); }} 
@@ -584,19 +640,24 @@ export default function App() {
             📊 Dasbor Analitik
           </button>
           
-          <button 
-            onClick={() => { setActiveTab('browse'); triggerToast('Membuka Katalog Material'); }} 
-            className={`bbg-menu-item ${activeTab === 'browse' ? 'active' : ''}`}
-          >
-            🧱 Jelajah Material
-          </button>
-          
-          <button 
-            onClick={() => { setActiveTab('cart'); triggerToast('Membuka Keranjang Belanja'); }} 
-            className={`bbg-menu-item ${activeTab === 'cart' ? 'active' : ''}`}
-          >
-            🛒 Keranjang Belanja ({cart.reduce((sum, item) => sum + item.quantity, 0)})
-          </button>
+          {/* Menu Belanja HANYA Tampil jika Peran adalah KONSUMEN (Customer) */}
+          {role === 'customer' && (
+            <>
+              <button 
+                onClick={() => { setActiveTab('browse'); triggerToast('Membuka Katalog Material'); }} 
+                className={`bbg-menu-item ${activeTab === 'browse' ? 'active' : ''}`}
+              >
+                🧱 Jelajah Material
+              </button>
+              
+              <button 
+                onClick={() => { setActiveTab('cart'); triggerToast('Membuka Keranjang Belanja'); }} 
+                className={`bbg-menu-item ${activeTab === 'cart' ? 'active' : ''}`}
+              >
+                🛒 Keranjang Belanja ({cart.reduce((sum, item) => sum + item.quantity, 0)})
+              </button>
+            </>
+          )}
 
           <button 
             onClick={() => { setActiveTab('orders'); triggerToast('Membuka Log Kerja Pengiriman'); }} 
@@ -615,7 +676,7 @@ export default function App() {
 
         <div style={{ marginTop: 'auto', borderTop: '1px solid #1e293b', paddingTop: '20px' }}>
           <p style={{ fontSize: '11px', color: '#64748b', fontWeight: '700', textTransform: 'uppercase' }}>
-            System Standard v4.2
+            System Standard v4.3
           </p>
         </div>
       </aside>
@@ -632,7 +693,7 @@ export default function App() {
             <p style={{ fontSize: '12px', color: '#64748b', margin: '4px 0 0 0' }}>Integrasi Admin, Toko Mitra, Konsumen, & Kurir</p>
           </div>
           
-          <div style={{ display: 'flex', itemsCenter: 'center', gap: '16px' }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '16px' }}>
             {/* Custom Login Switcher */}
             <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
               <span style={{ fontSize: '12px', fontWeight: '700', color: '#64748b' }}>Simulasi Peran:</span>
@@ -686,9 +747,15 @@ export default function App() {
                 <span style={{ backgroundColor: '#F2C335', color: '#0f172a', fontSize: '10px', fontWeight: '800', padding: '4px 10px', borderRadius: '20px', letterSpacing: '0.05em' }}>CARGO PREMIUM B2B</span>
                 <h1 style={{ fontSize: '32px', fontWeight: '800', margin: '12px 0 8px 0', lineHeight: '1.2' }}>{SLIDER_PHOTOS[currentSlide].title}</h1>
                 <p style={{ fontSize: '14px', color: '#e2e8f0', margin: '0 0 24px 0', maxWidth: '600px' }}>{SLIDER_PHOTOS[currentSlide].desc}</p>
-                <button onClick={() => { setActiveTab('browse'); }} className="bbg-btn-primary" style={{ backgroundColor: '#F2C335', color: '#0f172a' }}>
-                  🧱 Jelajah & Belanja Sekarang
-                </button>
+                {role === 'customer' ? (
+                  <button onClick={() => { setActiveTab('browse'); }} className="bbg-btn-primary" style={{ backgroundColor: '#F2C335', color: '#0f172a' }}>
+                    🧱 Jelajah & Belanja Sekarang
+                  </button>
+                ) : (
+                  <button onClick={() => { setActiveTab('orders'); }} className="bbg-btn-primary" style={{ backgroundColor: '#ffffff', color: '#0f172a' }}>
+                    📦 Kelola Log Kerja & Pengiriman
+                  </button>
+                )}
               </div>
 
               {/* Dynamic Notification Hub */}
@@ -703,13 +770,38 @@ export default function App() {
                 </div>
               </div>
 
+              {/* Tools Monitoring Backend Tambahan untuk Peran Admin */}
+              {role === 'admin' && (
+                <div className="bbg-interactive-card" style={{ borderLeft: '6px solid #1e88e5' }}>
+                  <h3 style={{ margin: '0 0 8px 0', fontSize: '16px', fontWeight: '700', color: '#1e88e5' }}>🛡️ Admin System Settings Console</h3>
+                  <p style={{ fontSize: '13px', color: '#64748b', marginBottom: '16px' }}>Konfigurasi margin keselamatan ODOL nasional serta penyesuaian tarif flat tol.</p>
+                  <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '16px' }}>
+                    <div>
+                      <label style={{ fontSize: '11px', fontWeight: '700', color: '#64748b', display: 'block', marginBottom: '6px' }}>Toleransi Keselamatan ODOL (%)</label>
+                      <input 
+                        type="number" 
+                        value={systemSafetyMargin} 
+                        onChange={(e) => setSystemSafetyMargin(parseInt(e.target.value) || 0)} 
+                        className="bbg-form-control" 
+                      />
+                    </div>
+                    <div>
+                      <label style={{ fontSize: '11px', fontWeight: '700', color: '#64748b', display: 'block', marginBottom: '6px' }}>Driver Aktif Siaga (Cloud)</label>
+                      <div style={{ padding: '12px', backgroundColor: '#f1f5f9', borderRadius: '12px', fontSize: '12px', fontWeight: '600' }}>
+                        🟢 3 Driver Online di Jabodetabek
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              )}
+
             </div>
           )}
 
           {/* =======================================================
-              TAB 2: MATERIAL BROWSER
+              TAB 2: MATERIAL BROWSER (CUSTOMER ONLY)
               ======================================================= */}
-          {activeTab === 'browse' && (
+          {activeTab === 'browse' && role === 'customer' && (
             <div className="bbg-interactive-card" style={{ animation: 'fadeIn 0.4s ease' }}>
               <div style={{ borderBottom: '1px solid #e2e8f0', paddingBottom: '16px', marginBottom: '24px' }}>
                 <h3 style={{ margin: 0, fontSize: '18px', fontWeight: '700' }}>🧱 Katalog Pengapalan Material Konstruksi</h3>
@@ -749,9 +841,9 @@ export default function App() {
           )}
 
           {/* =======================================================
-              TAB 3: KERANJANG BELANJA & CHECKOUT LOGISTICS
+              TAB 3: KERANJANG BELANJA & CHECKOUT LOGISTICS (CUSTOMER ONLY)
               ======================================================= */}
-          {activeTab === 'cart' && (
+          {activeTab === 'cart' && role === 'customer' && (
             <div className="bbg-interactive-card" style={{ animation: 'fadeIn 0.4s ease' }}>
               <h3 style={{ margin: '0 0 24px 0', fontSize: '18px', fontWeight: '700' }}>🛒 Keranjang Belanja Logistik</h3>
               
@@ -815,7 +907,7 @@ export default function App() {
                     </div>
                   </div>
 
-                  {/* Summary & Checkout Checkout Checkout */}
+                  {/* Summary & Checkout */}
                   <div style={{ backgroundColor: '#f8fafc', border: '1px solid #e2e8f0', borderRadius: '24px', padding: '32px', display: 'flex', flexDirection: 'column', justifyContent: 'space-between' }}>
                     <div>
                       <h4 style={{ margin: '0 0 16px 0', fontSize: '14px', fontWeight: '700', color: '#64748b', textTransform: 'uppercase' }}>Rincian Biaya Muatan</h4>
@@ -909,10 +1001,19 @@ export default function App() {
                           ======================================================= */}
                       <div style={{ borderTop: '1px solid #e2e8f0', marginTop: '20px', paddingTop: '16px', display: 'flex', flexWrap: 'wrap', gap: '12px', justifyContent: 'flex-end' }}>
                         
-                        {/* 1. ADMIN ACTIONS */}
-                        {role === 'admin' && order.status === 'Menunggu Konfirmasi Admin' && (
-                          <button onClick={() => handleAdminApprove(order.id)} className="bbg-btn-primary">
-                            🛡️ Setujui & Berikan Tugas ke Toko
+                        {/* 1. ADMIN BACKEND ACTIONS - DETAIL INSPECTION DRAWER */}
+                        {role === 'admin' && (
+                          <button 
+                            onClick={() => {
+                              setSelectedAdminOrder(order);
+                              setAdminSelectedMerchant(order.merchantId || 'm1');
+                              setAdminSelectedDriver(order.driverName || 'Pak Rudi (Armada Truk Engkel CDE)');
+                              triggerToast('Membuka Panel Detail Pengapalan...');
+                            }} 
+                            className="bbg-btn-primary"
+                            style={{ backgroundColor: '#1e88e5' }}
+                          >
+                            🛡️ Kelola & Dispatch Detail
                           </button>
                         )}
 
@@ -1030,6 +1131,149 @@ export default function App() {
           )}
 
         </div>
+
+        {/* =======================================================
+            🛡️ BACKEND ADMIN DETAILED DISPATCH DRAWER (MODAL OVERLAY)
+            ======================================================= */}
+        {role === 'admin' && selectedAdminOrder && (
+          <div className="bbg-drawer-overlay" onClick={() => setSelectedAdminOrder(null)}>
+            <div className="bbg-drawer-content" onClick={(e) => e.stopPropagation()}>
+              
+              {/* Header Drawer */}
+              <div style={{ padding: '24px', borderBottom: '1px solid #e2e8f0', display: 'flex', justifyContent: 'space-between', alignItems: 'center', backgroundColor: '#0f172a', color: '#ffffff' }}>
+                <div>
+                  <span style={{ fontSize: '11px', fontWeight: '800', backgroundColor: '#1e88e5', padding: '4px 8px', borderRadius: '6px' }}>COMMAND CENTER</span>
+                  <h3 style={{ margin: '6px 0 0 0', fontSize: '18px', fontWeight: '700' }}>Detail Pengapalan {selectedAdminOrder.id}</h3>
+                </div>
+                <button 
+                  onClick={() => setSelectedAdminOrder(null)} 
+                  style={{ background: 'none', border: 'none', color: '#ffffff', fontSize: '24px', cursor: 'pointer', fontWeight: 'bold' }}
+                >
+                  ✕
+                </button>
+              </div>
+
+              {/* Body Drawer */}
+              <div style={{ padding: '24px', display: 'flex', flexDirection: 'column', gap: '24px', flexGrow: 1 }}>
+                
+                {/* Section 1: Itemized Freight & Specifications */}
+                <div>
+                  <h4 style={{ margin: '0 0 12px 0', fontSize: '13px', textTransform: 'uppercase', color: '#64748b' }}>📦 Daftar Muatan Fisik</h4>
+                  <div style={{ backgroundColor: '#f8fafc', borderRadius: '16px', padding: '16px', border: '1px solid #e2e8f0' }}>
+                    {selectedAdminOrder.items.map((item, idx) => (
+                      <div key={idx} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', paddingBottom: '8px', marginBottom: '8px', borderBottom: '1px solid #e2e8f0' }}>
+                        <div>
+                          <p style={{ margin: 0, fontSize: '13px', fontWeight: '700' }}>{item.name}</p>
+                          <p style={{ margin: 0, fontSize: '11px', color: '#64748b' }}>{item.weight} Kg/{item.unit} | {item.volume} m³</p>
+                        </div>
+                        <span style={{ fontWeight: '700', fontSize: '13px' }}>{item.quantity} {item.unit}</span>
+                      </div>
+                    ))}
+                    <div style={{ display: 'flex', justifyContent: 'space-between', paddingTop: '8px', fontSize: '12px', fontWeight: '700' }}>
+                      <span>Kumulatif Fisik:</span>
+                      <span>⚖️ {selectedAdminOrder.totalWeight} Kg | 📐 {selectedAdminOrder.totalVolume.toFixed(3)} m³</span>
+                    </div>
+                  </div>
+                </div>
+
+                {/* Section 2: Audit Keamanan Anti-ODOL */}
+                <div>
+                  <h4 style={{ margin: '0 0 12px 0', fontSize: '13px', textTransform: 'uppercase', color: '#64748b' }}>⚖️ Analisis Batas Jalan (Anti-ODOL)</h4>
+                  {selectedAdminOrder.totalWeight > 1500 ? (
+                    <div style={{ padding: '16px', backgroundColor: '#fef2f2', borderLeft: '5px solid #ef4444', borderRadius: '12px', fontSize: '12px', color: '#991b1b' }}>
+                      <p style={{ margin: '0 0 4px 0', fontWeight: '800' }}>⚠️ PERINGATAN ODOL (OVER-LOADING)</p>
+                      Berat kargo melampaui ambang batas aman Mobil Pick-Up. <b>Wajib dialokasikan menggunakan Truk Engkel CDE atau Truk Double CDD!</b>
+                    </div>
+                  ) : (
+                    <div style={{ padding: '16px', backgroundColor: '#f0fdf4', borderLeft: '5px solid #22c55e', borderRadius: '12px', fontSize: '12px', color: '#166534' }}>
+                      <p style={{ margin: '0 0 4px 0', fontWeight: '800' }}>🟢 AMAN SEHAT JALAN RAYA</p>
+                      Muatan fisik kargo berada di bawah toleransi ambang batas ODOL nasional.
+                    </div>
+                  )}
+                </div>
+
+                {/* Section 3: Proximity Warehouse Matcher */}
+                <div>
+                  <h4 style={{ margin: '0 0 12px 0', fontSize: '13px', textTransform: 'uppercase', color: '#64748b' }}>🏪 Alokasi Toko Penyuplai & Proximity</h4>
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+                    <label style={{ fontSize: '11px', fontWeight: '700', color: '#64748b' }}>Pilih Gudang Toko Mitra terdekat:</label>
+                    <select 
+                      value={adminSelectedMerchant}
+                      onChange={(e) => setAdminSelectedMerchant(e.target.value)}
+                      className="bbg-form-control"
+                    >
+                      {merchants.map(m => (
+                        <option key={m.id} value={m.id}>
+                          {m.name} (Rating: {m.rating} ⭐)
+                        </option>
+                      ))}
+                    </select>
+                  </div>
+                </div>
+
+                {/* Section 4: Driver Fleet Assignment */}
+                <div>
+                  <h4 style={{ margin: '0 0 12px 0', fontSize: '13px', textTransform: 'uppercase', color: '#64748b' }}>🚛 Dispatch Driver & Armada</h4>
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+                    <label style={{ fontSize: '11px', fontWeight: '700', color: '#64748b' }}>Tugaskan armada siaga:</label>
+                    <select 
+                      value={adminSelectedDriver}
+                      onChange={(e) => setAdminSelectedDriver(e.target.value)}
+                      className="bbg-form-control"
+                    >
+                      <option value="Pak Rudi (Armada Truk Engkel CDE)">Pak Rudi (Truk Engkel CDE - Maks 3 Ton)</option>
+                      <option value="Pak Budi (Armada Mobil Pick-Up)">Pak Budi (Mobil Pick-Up - Maks 1.5 Ton)</option>
+                      <option value="Pak Doni (Armada Truk Double CDD)">Pak Doni (Truk Double CDD - Maks 7 Ton)</option>
+                    </select>
+                  </div>
+                </div>
+
+                {/* Section 5: Financial Auditing */}
+                <div>
+                  <h4 style={{ margin: '0 0 12px 0', fontSize: '13px', textTransform: 'uppercase', color: '#64748b' }}>🛡️ Audit Audit Keuangan Escrow</h4>
+                  <div style={{ backgroundColor: '#f1f5f9', borderRadius: '12px', padding: '16px', fontSize: '12px' }}>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '6px' }}>
+                      <span>Subtotal Material:</span>
+                      <b>Rp {selectedAdminOrder.subtotal.toLocaleString('id-ID')}</b>
+                    </div>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '6px' }}>
+                      <span>Biaya Pengantaran:</span>
+                      <b>Rp {selectedAdminOrder.deliveryCost.toLocaleString('id-ID')}</b>
+                    </div>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '6px' }}>
+                      <span>Biaya Tambahan (Addons):</span>
+                      <b>Rp {selectedAdminOrder.addonCost.toLocaleString('id-ID')}</b>
+                    </div>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', borderTop: '1px solid #cbd5e1', paddingTop: '8px', fontWeight: '800' }}>
+                      <span>Total Dana Dikunci:</span>
+                      <span style={{ color: '#00805a' }}>Rp {selectedAdminOrder.grandTotal.toLocaleString('id-ID')}</span>
+                    </div>
+                  </div>
+                </div>
+
+              </div>
+
+              {/* Footer Drawer Actions */}
+              <div style={{ padding: '24px', borderTop: '1px solid #e2e8f0', backgroundColor: '#f8fafc', display: 'flex', gap: '12px', justifyContent: 'flex-end' }}>
+                <button 
+                  onClick={() => setSelectedAdminOrder(null)} 
+                  style={{ backgroundColor: '#cbd5e1', color: '#1e293b', border: 'none', padding: '12px 20px', borderRadius: '12px', cursor: 'pointer', fontWeight: '700', fontSize: '13px' }}
+                >
+                  Tutup Panel
+                </button>
+                {selectedAdminOrder.status === 'Menunggu Konfirmasi Admin' && (
+                  <button 
+                    onClick={() => handleAdminApproveAndDispatch(selectedAdminOrder.id)} 
+                    className="bbg-btn-primary"
+                  >
+                    🛡️ Sahkan & Minta Toko Kemas
+                  </button>
+                )}
+              </div>
+
+            </div>
+          </div>
+        )}
 
         {/* FOOTER */}
         <footer style={{ backgroundColor: '#0f172a', color: '#94a3b8', padding: '24px 40px', fontSize: '12px', borderTop: '1px solid #1e293b', marginTop: 'auto', textAlign: 'center' }}>
